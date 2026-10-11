@@ -140,12 +140,15 @@
   }
 
   #stage { flex:1; position:relative; min-height:0; overflow:hidden; padding-top:10px; }
-  /* 背景层：缓慢漂移的雾霭光斑（纯 CSS 动画，GPU 合成，不占主循环） */
-  #ambient { position:absolute; inset:-12%; z-index:0; pointer-events:none; filter:blur(38px); will-change:transform; }
+  /* 背景层：缓慢漂移的雾霭光斑（纯 CSS 动画，GPU 合成，不占主循环）。
+     注意：不要给本层加 filter:blur —— 大尺寸层 + 滤镜在部分桌面浏览器上
+     会突破父级 overflow:hidden 的裁剪，在机身外画出暗色块（实测 bug）。
+     光斑的柔和感由 .orb 自身的径向渐变（渐隐到透明）提供，无需 blur。 */
+  #ambient { position:absolute; inset:0; z-index:0; pointer-events:none; }
   #ambient .orb { position:absolute; border-radius:50%; opacity:.34; mix-blend-mode:screen; }
-  #ambient .o1 { width:60%; height:52%; left:2%;  top:6%;  background:radial-gradient(circle,rgba(201,168,124,.26),rgba(201,168,124,0) 70%); animation:drift1 26s ease-in-out infinite; }
-  #ambient .o2 { width:66%; height:56%; right:0%; top:30%; background:radial-gradient(circle,rgba(143,168,165,.22),rgba(143,168,165,0) 70%); animation:drift2 34s ease-in-out infinite; }
-  #ambient .o3 { width:58%; height:50%; left:14%; bottom:2%; background:radial-gradient(circle,rgba(168,154,179,.20),rgba(168,154,179,0) 70%); animation:drift3 30s ease-in-out infinite; }
+  #ambient .o1 { width:70%; height:60%; left:-4%; top:2%;  background:radial-gradient(circle,rgba(201,168,124,.30),rgba(201,168,124,0) 68%); animation:drift1 26s ease-in-out infinite; }
+  #ambient .o2 { width:76%; height:64%; right:-6%; top:28%; background:radial-gradient(circle,rgba(143,168,165,.26),rgba(143,168,165,0) 68%); animation:drift2 34s ease-in-out infinite; }
+  #ambient .o3 { width:68%; height:58%; left:8%; bottom:-2%; background:radial-gradient(circle,rgba(168,154,179,.24),rgba(168,154,179,0) 68%); animation:drift3 30s ease-in-out infinite; }
   @keyframes drift1 { 0%,100%{transform:translate3d(0,0,0) scale(1)} 50%{transform:translate3d(6%,5%,0) scale(1.12)} }
   @keyframes drift2 { 0%,100%{transform:translate3d(0,0,0) scale(1.06)} 50%{transform:translate3d(-7%,-6%,0) scale(1)} }
   @keyframes drift3 { 0%,100%{transform:translate3d(0,0,0) scale(1)} 50%{transform:translate3d(-5%,-4%,0) scale(1.14)} }
