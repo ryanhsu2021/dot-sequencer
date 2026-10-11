@@ -374,6 +374,37 @@ function buildVariationSlots() {
 }
 
 // 生成"呼吸式闭音分布"：以团块方式留白，模拟段落呼吸，而非均匀椒盐
+const MAX_REST_RUN = 2;   // 任何方向都不允许出现 ≥3 个连续闭音点（否则声部经过时连续多拍空音）
+
+// 打断过长的连续留白：行、列双向扫描，任何方向出现 ≥3 连续闭音就把该格还原为发声点。
+// 团块留白 / 密度切换重采样都容易让留白连成一片，这里统一收口，保证节奏不被切断。
+// 注意：打断会让闭音实际占比略低于目标，调用方需把目标值上调一点来补偿。
+function breakLongRestRuns(mask) {
+  for (let r = 0; r < ROWS; r++) {
+    let run = 0;
+    for (let c = 0; c < COLS; c++) {
+      if (mask.has(wKey(c, r))) {
+        run++;
+        if (run > MAX_REST_RUN) { mask.delete(wKey(c, r)); run = 0; }   // 每 2 格留白必断一次
+      } else {
+        run = 0;
+      }
+    }
+  }
+  for (let c = 0; c < COLS; c++) {
+    let run = 0;
+    for (let r = 0; r < ROWS; r++) {
+      if (mask.has(wKey(c, r))) {
+        run++;
+        if (run > MAX_REST_RUN) { mask.delete(wKey(c, r)); run = 0; }
+      } else {
+        run = 0;
+      }
+    }
+  }
+  return mask;
+}
+
 function buildRestMask(targetRatio) {
   const mask = new Set();
   const total = ROWS * COLS;
@@ -396,41 +427,8 @@ function buildRestMask(targetRatio) {
     mask.add(wKey(Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS)));
   }
 
-  // 3) 打断过长的连续留白：任何一行内不允许出现 ≥3 个连续闭音点。
-  //    团块留白容易在一行里横向连成一片，声部小球经过时就会连续多个 step 不发声，
-  //    听感上"空音太多、旋律不连贯"。这里按行扫描，把超过 2 的 run 每隔一格"点亮"一下，
-  //    既保留呼吸感（仍允许 1–2 拍的停顿），又保证节奏不被切断。
-  const MAX_REST_RUN = 2;
-  for (let r = 0; r < ROWS; r++) {
-    let run = 0;
-    for (let c = 0; c < COLS; c++) {
-      if (mask.has(wKey(c, r))) {
-        run++;
-        if (run > MAX_REST_RUN) {
-          mask.delete(wKey(c, r));      // 打断：把这一格还原为发声点
-          run = 0;                       // 重置计数，形成"每 2 格留白必断一次"
-        }
-      } else {
-        run = 0;
-      }
-    }
-  }
-  // 同理处理竖直方向：声部小球常做上下移动，纵向长空白同样会造成连续空音。
-  for (let c = 0; c < COLS; c++) {
-    let run = 0;
-    for (let r = 0; r < ROWS; r++) {
-      if (mask.has(wKey(c, r))) {
-        run++;
-        if (run > MAX_REST_RUN) {
-          mask.delete(wKey(c, r));
-          run = 0;
-        }
-      } else {
-        run = 0;
-      }
-    }
-  }
-  return mask;
+  // 打断过长的连续留白（行 + 列双向），保证任意方向至多 2 连闭音。
+  return breakLongRestRuns(mask);
 }
 
 function shuffleAll() {                                // 生成变奏
@@ -518,6 +516,10 @@ function resampleVariation(oldRows, oldCols) {
   slotOf = newSlot;
   walls.clear();
   for (const k of newWalls) walls.add(k);
+
+  // 重采样是最近邻映射：密度变密时，原本分散在新网格中相邻的多格可能同时命中同一旧留白团，
+  // 被"聚拢"成 ≥3 连续闭音 → 小球经过时连续多拍不发声。这里同样做行/列双向打断。
+  breakLongRestRuns(walls);
 }
 
 function applyDensity(v) {
