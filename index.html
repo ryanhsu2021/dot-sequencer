@@ -592,10 +592,12 @@ function initAudio() {
   AC = new (window.AudioContext || window.webkitAudioContext)();
 
   // 总线：干湿汇总 → 轻压缩（避免叠音削顶）→ 输出
-  master = AC.createGain(); master.gain.value = 0.52;
+  // 延音加长后同时发声的尾音更多，总线能量上升，阈值下调让压缩更早介入，
+  // 保证连奏叠加时不削顶、整体响度平稳。
+  master = AC.createGain(); master.gain.value = 0.46;
   comp = AC.createDynamicsCompressor();
-  comp.threshold.value = -14; comp.knee.value = 24; comp.ratio.value = 2.6;
-  comp.attack.value = 0.006; comp.release.value = 0.28;
+  comp.threshold.value = -18; comp.knee.value = 26; comp.ratio.value = 3.0;
+  comp.attack.value = 0.006; comp.release.value = 0.30;
   master.connect(comp); comp.connect(AC.destination);
 
   // 干声母线（所有音符先入此节点，再分别送往干/湿）
@@ -649,35 +651,53 @@ function playNote(midi, vel = 1, when = 0) {
   const f = midiToFreq(midi);
   const g = AC.createGain(); g.connect(dryBus);       // 干声入母线（母线再分发到混响/延迟）
   const o = AC.createOscillator();
-  let dur = 0.35;
+  // ---- 延音时长（秒）----
+  // 以「拍」为单位设定，随 BPM 自动缩放：BPM 越快音符越短，避免快节奏下尾音互相糊住。
+  // 总体比早期版本明显加长，让相邻音符的尾音相互搭接，旋律线条更连贯（legato 感）。
+  const beat = 60 / state.bpm;
+  let dur = beat * 1.5;
   if (state.timbre === 'pluck') {
-    o.type = 'triangle'; dur = 0.3; o.frequency.value = f;
+    // 拨弦：原本 0.48 拍过短促，拉长到约 1.5 拍，让琶音串成线
+    dur = beat * 1.5;
+    o.type = 'triangle'; o.frequency.value = f;
     const o2 = AC.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = f;
     const g2 = AC.createGain(); g2.gain.value = 0.22; o2.connect(g2); g2.connect(g);
     o2.start(t); o2.stop(t + dur);
     g.gain.setValueAtTime(0.5 * vel, t);
+    // 先保持一小段再指数衰减：起音扎实、尾音绵长，听感更像连奏而非点状击弦
+    g.gain.exponentialRampToValueAtTime(0.28 * vel, t + dur * 0.18);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   } else if (state.timbre === 'bell') {
-    o.type = 'sine'; dur = 1.2; o.frequency.value = f * 2;
+    // 铃音：尾音天然长，再拉长约 2.6 拍，泛音在混响里延续更久
+    dur = beat * 2.6;
+    o.type = 'sine'; o.frequency.value = f * 2;
     const mod = AC.createOscillator(); mod.frequency.value = f * 3.01;
     const mg = AC.createGain(); mg.gain.value = f * 1.5;
     mod.connect(mg); mg.connect(o.frequency); mod.start(t); mod.stop(t + dur);
     g.gain.setValueAtTime(0.32 * vel, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    // 铃音高频衰减快：先保持较久再收尾，实测有效尾音更长、泛音在混响里延续更自然
+    g.gain.exponentialRampToValueAtTime(0.16 * vel, t + dur * 0.42);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
   } else if (state.timbre === 'pad') {
-    o.type = 'sine'; dur = 1.4; o.frequency.value = f;
+    // 柔垫：本身就是长音，拉到约 3.2 拍，形成持续铺底的和声层
+    dur = beat * 3.2;
+    o.type = 'sine'; o.frequency.value = f;
     const o2 = AC.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.006;
     const g2 = AC.createGain(); g2.gain.value = 0.5; o2.connect(g2); g2.connect(g);
     o2.start(t); o2.stop(t + dur);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.24 * vel, t + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.gain.linearRampToValueAtTime(0.26 * vel, t + 0.10);          // 慢起音
+    g.gain.linearRampToValueAtTime(0.20 * vel, t + dur * 0.55);    // 长保持段（几乎不衰减）
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);           // 末段才收尾
   } else {
-    o.type = 'square'; dur = 0.26; o.frequency.value = f / 2;
+    // 低音：原本 0.42 拍太短，拉长到约 1.6 拍，让低音线条撑住和声、更连贯
+    dur = beat * 1.6;
+    o.type = 'square'; o.frequency.value = f / 2;
     const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
     o.connect(lp); lp.connect(g);
     g.gain.setValueAtTime(0.4 * vel, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.gain.exponentialRampToValueAtTime(0.26 * vel, t + dur * 0.35);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.97);
   }
   o.connect(g);
   o.start(t); o.stop(t + dur);
