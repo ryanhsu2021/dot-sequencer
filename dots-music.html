@@ -25,7 +25,9 @@
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body {
     height:100%;
-    background:radial-gradient(120% 80% at 50% 0%,#101217 0%,var(--bg-0) 68%);
+    /* 顶部渐变会与机身投影叠加形成可辨识的暗块（PC 端四周露出页面背景时尤其明显），
+       改为均匀暗底，投影落在纯色上不会形成块状边界 */
+    background:var(--bg-0);
     display:flex; align-items:center; justify-content:center;
     font-family:-apple-system,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
     -webkit-font-smoothing:antialiased;
@@ -35,7 +37,10 @@
     background:linear-gradient(176deg,var(--bg-2) 0%,var(--bg-1) 58%,#080a0e 100%);
     border-radius:34px; overflow:hidden;
     display:flex; flex-direction:column; position:relative; touch-action:none;
-    box-shadow:0 0 0 1px #1c1f26, 0 0 0 8px #101218, 0 0 0 9px #191c22, 0 30px 80px rgba(0,0,0,.8);
+    /* 投影收紧：大范围柔影在渐变背景上会画出暗块，改为小半径 + 低不透明度，
+       并叠加一圈同色系扩散环让边缘过渡自然 */
+    box-shadow:0 0 0 1px #1c1f26, 0 0 0 8px #101218, 0 0 0 9px #191c22,
+               0 0 0 40px #07080b, 0 14px 40px rgba(0,0,0,.35);
     /* 关键：isolation + translateZ 建立独立合成上下文。
        否则桌面 Chrome 下 #ambient 的 blur 滤镜层会溢出 overflow:hidden 的裁剪，
        在机身外的页面背景上画出一块边缘锐利的暗色区域。 */
