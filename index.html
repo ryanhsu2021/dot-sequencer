@@ -219,8 +219,8 @@
     <div class="transport">
       <button id="playBtn">▶</button>
       <div class="sliders">
-        <label>速度 <span id="tempoVal">96 BPM</span></label>
-        <input type="range" id="tempo" min="40" max="200" value="96">
+        <label>速度 <span id="tempoVal">60 BPM</span></label>
+        <input type="range" id="tempo" min="40" max="200" value="60">
       </div>
       <div id="tools">
         <button id="shuffleBtn" title="随机重排音级并变更触发矩阵">生成变奏</button>
@@ -311,7 +311,7 @@ const SCALES = {
   chroma: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
 };
 const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const state = { scale:'penta', timbre:'pluck', mode:'drunk', ballCount:2, bpm:96, cols:11, rows:20, cell:34 };
+const state = { scale:'penta', timbre:'pluck', mode:'drunk', ballCount:2, bpm:60, cols:11, rows:20, cell:34 };
 
 // 每个音点承载一个"音级位"（pitch slot）。默认按行递升（下低上高），
 // 「生成变奏」会重排音级位，使任一音点可映射到任一音高。
@@ -689,7 +689,10 @@ const ballSpdFactor = b => (b.div || 16) / 16;     // 速度倍率：1/16→1.0�
 const MOVE_SCALE = 300;                             // 基准球速：BASE_BPM 下的设计值
 // 「速度」滑杆的语义 = 整台乐器的快慢。所以球速必须随 BPM 等比缩放：
 // BPM ×2 → 球跑快一倍 → 走格与撞击都翻倍 → 旋律密度与节奏网格同步变密。
-// 基准取出厂默认 96 BPM，保证默认状态下观感/听感与之前完全一致。
+// 基准固定为 96 BPM —— 它是"设计速度"的参考点（MOVE_SCALE 的标定用），
+// 不随出厂默认值变动，这样此前实测过的 BPM↔球速映射表始终成立：
+//   60 → 0.63×  96 → 1.0×  180 → 1.88×
+// 出厂默认 BPM 现为 60，故冷启动时球速/音符密度约为原默认的 0.63 倍（更舒缓）。
 const BASE_BPM = 96;
 const bpmScale = () => state.bpm / BASE_BPM;
 function makeBall(slot, n, idx) {
