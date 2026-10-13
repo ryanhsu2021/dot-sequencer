@@ -52,8 +52,10 @@
     content:''; position:absolute; top:0; left:12%; right:12%; height:1px; z-index:2;
     background:linear-gradient(90deg,transparent,rgba(143,124,95,.18),transparent);
   }
+  /* 播放栏：单行「播放键 + 速度 + 三个创作按钮」。
+     速度条 flex:1 可收缩（min-width 保底），按钮收紧字号与内距保证单行不换行。 */
   #playbar {
-    display:flex; align-items:center; gap:14px; padding:11px 18px; flex:0 0 auto;
+    display:flex; align-items:center; gap:10px; padding:11px 18px; flex:0 0 auto;
     border-top:1px solid #14161c;
     background:linear-gradient(180deg,rgba(12,13,18,.10),rgba(6,7,10,.30));
   }
@@ -91,11 +93,12 @@
     box-shadow:0 1px 5px rgba(0,0,0,.65), 0 0 0 1px rgba(143,124,95,.18);
   }
 
-  #tools { display:flex; gap:7px; flex:0 0 auto; }
+  #tools { display:flex; gap:6px; flex:0 0 auto; }
   #tools button {
-    font-size:13px; padding:0 13px; height:36px; border-radius:10px; cursor:pointer; white-space:nowrap;
+    flex:0 0 auto; justify-content:center;
+    font-size:12px; padding:0 9px; height:32px; border-radius:10px; cursor:pointer; white-space:nowrap;
     border:1px solid rgba(120,126,142,.12); background:rgba(140,148,168,.03);
-    color:#6f727c; letter-spacing:.3px; font-family:inherit;
+    color:#6f727c; letter-spacing:.2px; font-family:inherit;
     display:inline-flex; align-items:center;
     transition:transform .14s, border-color .25s, color .25s, background .25s;
   }
@@ -112,6 +115,15 @@
     box-shadow:0 0 12px rgba(143,124,95,.26);
   }
   #tools #autoBtn:active { background:rgba(255,255,255,.03); }
+  /* 声部随机：同款「色彩流动」进度表达，改用雾松青绿以示与定时变奏区分 */
+  #tools #voiceAutoBtn.on {
+    border-color:#8fa9a2; color:#0f1214;
+    background:linear-gradient(160deg,#a9c2bb,#7d9a93,#b6ccc6,#7d9a93,#a9c2bb);
+    background-size:320% 100%;
+    background-position:var(--auto-p,0%) 0;
+    box-shadow:0 0 12px rgba(140,168,160,.24);
+  }
+  #tools #voiceAutoBtn:active { background:rgba(255,255,255,.03); }
 
   /* ---- 控制区：置于底部（拇指可达）；两列栅格，触控区达标且紧凑 ---- */
   #opts {
@@ -132,7 +144,7 @@
   /* chiprow 占满组内剩余宽度，chip 均分拉伸 → 每行左右撑满对齐 */
   .chiprow { display:flex; gap:5px; min-width:0; flex:1 1 0; }
   .chip {
-    font-size:13px; padding:0 4px; height:32px; border-radius:9px; border:1px solid rgba(120,126,142,.07);
+    font-size:12px; padding:0 4px; height:32px; border-radius:10px; border:1px solid rgba(120,126,142,.07);
     background:rgba(140,148,168,.035); color:#6f727c; cursor:pointer;
     font-family:inherit; letter-spacing:.2px; flex:1 1 0; min-width:0;
     display:inline-flex; align-items:center; justify-content:center;
@@ -143,6 +155,46 @@
     border-color:rgba(143,124,95,.28);
     color:#a8916a;
   }
+  /* 「声部」网格：一行尽量放 3 个声部（窄屏放不下自动落到一行 2 个），
+     每个声部 = 序号圆点 + 音高 + 速度。
+     视觉：未激活 = 冷灰（同未选中 chip）；激活 = 该声部小球的专属色
+     （每个 .voice 上由 JS 注入 --vh/--vs/--vl，与画布中的球色一一对应），
+     不靠降低透明度表达"关闭"，避免发灰发糊、保持面板整体质感统一。 */
+  #voiceGrid { flex:1; display:flex; flex-wrap:wrap; gap:5px 6px; min-width:0; }
+  .voice { display:flex; align-items:center; gap:4px; flex:1 1 108px; min-width:0; }
+  .vc {
+    width:24px; height:24px; border-radius:50%; flex:0 0 auto; cursor:pointer; padding:0;
+    border:1.5px solid #2b2f38; background:#12141a; color:#565a64;
+    font-size:12px; font-family:inherit; display:flex; align-items:center; justify-content:center;
+    transition:border-color .2s ease, color .2s ease, background .2s ease, box-shadow .2s ease;
+  }
+  .vc:hover { border-color:#3a3f4a; }
+  /* 激活：圆点直接填该声部小球色（深色数字压在色块上），一眼对应画布里的球 */
+  .voice.on .vc {
+    border-color:hsla(var(--vh,38),var(--vs,30%),calc(var(--vl,62%) + 6%),.92);
+    background:hsla(var(--vh,38),var(--vs,30%),var(--vl,62%),.88);
+    color:#0e1015; font-weight:600;
+    box-shadow:0 0 9px hsla(var(--vh,38),var(--vs,30%),var(--vl,62%),.24);
+  }
+  .vbtn {
+    flex:1 1 0; min-width:0; height:32px; border-radius:10px; cursor:pointer;
+    border:1px solid rgba(120,126,142,.06); background:rgba(140,148,168,.025);
+    display:flex; align-items:center; justify-content:center;
+    line-height:1.2; padding:0 2px; font-family:inherit; font-size:12px;
+    transition:border-color .2s ease, background .2s ease, color .2s ease, transform .12s ease;
+  }
+  .vbtn b { font-weight:500; font-size:12px; color:#5f636d; font-variant-numeric:tabular-nums; letter-spacing:.2px; }
+  /* 激活声部：音高/速度跟着该声部球色走，同色系极淡描边 + 底色 */
+  .voice.on .vbtn {
+    border-color:hsla(var(--vh,38),var(--vs,30%),var(--vl,62%),.20);
+    background:hsla(var(--vh,38),var(--vs,30%),var(--vl,62%),.07);
+  }
+  .voice.on .vbtn b { color:hsla(var(--vh,38),var(--vs,30%),calc(var(--vl,62%) + 2%),.96); font-weight:600; }
+  .vbtn:active { transform:scale(.94); }
+  /* 未激活声部的「音高 / 速度」依然可点击 —— 点一下会顺带激活该声部，
+     所以不用 disabled（会挡掉激活路径），只给一点悬停反馈暗示可点；
+     关闭只能走左侧圆点，避免误触。 */
+  .voice:not(.on) .vbtn:hover { border-color:rgba(120,126,142,.16); background:rgba(140,148,168,.05); }
 
   #stage { flex:1; position:relative; min-height:0; overflow:hidden; padding-top:10px; }
   /* 背景层：缓慢漂移的雾霭光斑（纯 CSS 动画，GPU 合成，不占主循环）。
@@ -184,6 +236,7 @@
     <div id="tools">
       <button id="shuffleBtn" title="随机重排音级并变更触发矩阵">生成变奏</button>
       <button id="autoBtn" title="每 8 小节自动生成一次变奏">定时变奏</button>
+      <button id="voiceAutoBtn" title="每 4-8 小节随机启停若干声部（始终保持 2-3 个声部激活）">声部随机</button>
     </div>
   </div>
 
@@ -201,19 +254,17 @@
       <button class="chip" data-v="pad">柔垫</button>
       <button class="chip" data-v="bass">低音</button>
     </div></div>
-    <div class="opt"><span>轨迹</span><div class="chiprow" data-key="mode">
+    <!-- 轨迹四项 → 整行撑满（与调式/密度行同宽对齐） -->
+    <div class="opt wide"><span>轨迹</span><div class="chiprow" data-key="mode">
       <button class="chip on" data-v="drunk">布朗</button>
       <button class="chip" data-v="line">直线</button>
       <button class="chip" data-v="circle">圆形</button>
+      <button class="chip" data-v="tri" title="黄金三角线：沿顶角 36° 的黄金三角形三边匀速环绕">三角</button>
     </div></div>
-    <div class="opt"><span>声部</span><div class="chiprow" data-key="balls">
-      <button class="chip" data-v="1">1</button>
-      <button class="chip on" data-v="2">2</button>
-      <button class="chip" data-v="3">3</button>
-      <button class="chip" data-v="4">4</button>
-      <button class="chip" data-v="5">5</button>
-      <button class="chip" data-v="6">6</button>
-    </div></div>
+    <!-- 每个声部（小球）独立配置：点圆点开启该声部（灰色=未激活，点序号更大的圆点会连同
+         之前的一起激活；点已激活的最小序号圆即可缩减声部）；
+         点「音高」在 低→中→高 间循环，点「速度」在 1/16→1/8→1/4 间循环（1/16 为默认） -->
+    <div class="opt wide"><span>声部</span><div id="voiceGrid"></div></div>
     <div class="opt wide"><span>密度</span><div class="chiprow" data-key="density">
       <button class="chip" data-v="46">疏</button>
       <button class="chip on" data-v="34">适中</button>
@@ -224,23 +275,41 @@
 
 <script>
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-let W, H, DPR = Math.min(devicePixelRatio || 1, 2);
+let W, H, DPR = Math.min(devicePixelRatio || 1, 1.75);
+// DPR 上限 1.75（而非 2）：主循环的开销几乎全部是画布像素填充（实测：隐藏画布后主线程
+// 占用从 ~99% 掉到 ~9%，其余都是 CSS 层，可忽略），而填充量正比于 DPR²。
+// 1.75 相比 2 直接省掉约 23% 的像素，而本作画面全是柔和渐变、没有高频细节，
+// 在 2x/3x 屏上肉眼几乎看不出差别 —— 这是性价比最高的一处降载。
 
 // ---- grid（密度 = 目标圆点直径；行列数按舞台宽高自适应，保证撑满且间距一致） ----
 let COLS = 11, ROWS = 20;
 let targetCell = 34;                 // 目标格径（px），由密度档位设定
-const walls = new Set();            // 闭音音点  "c,r"（仅静默，不作障碍）
-const wKey = (c, r) => c + ',' + r;
+const walls = new Set();            // 闭音音点（仅静默，不作障碍），key = row*COLS+col
+// 音点的整数键：row*COLS+col。相比 "c,r" 字符串键，热路径（每帧逐格判定）零字符串分配，
+// 也顺带消掉了每帧上百次的 GC 压力 —— 这是主循环里最容易被忽略的一处开销。
+const wKey = (c, r) => r * COLS + c;
+
+// 闭音查询加速表：draw 逐格判定、发声判定等每帧热路径直接查 Uint8Array，
+// 不再走 Set 的哈希查找。walls 每次批量变更后调用 syncWallFlags() 重建即可。
+let wallFlags = new Uint8Array(0);
+function syncWallFlags() {
+  const n = COLS * ROWS;
+  if (wallFlags.length !== n) wallFlags = new Uint8Array(n);
+  else wallFlags.fill(0);
+  for (const k of walls) if (k >= 0 && k < n) wallFlags[k] = 1;
+}
 
 // 依据舞台尺寸与目标格径推算行列数：
-//   COLS = round(可用宽 / targetCell)，ROWS = round(可用高 / targetCell)
-// 再各自精确等分回舞台 → cw ≈ ch（差异 < 半个格径），横向纵向均 100% 撑满。
+//   COLS = round(可用宽 / targetCell)，ROWS = round(可用高 / (targetCell × ROW_STRETCH))
+// 纵向刻意用更大的目标行高 → 行数更少、行距更舒展（音高区更透气、圆点也更大）。
+// 底部选项区已相当紧凑，继续压缩会牺牲可点面积，所以把"省高度"这件事交给音高区的行数。
+const ROW_STRETCH = 1.12;
 function computeGrid() {
   const pad = 6;
   const availW = Math.max(60, W - pad * 2);
   const availH = Math.max(80, H - pad * 2);
   COLS = Math.max(5, Math.round(availW / targetCell));
-  ROWS = Math.max(9, Math.round(availH / targetCell));
+  ROWS = Math.max(8, Math.round(availH / (targetCell * ROW_STRETCH)));
   state.cols = COLS; state.rows = ROWS;
 }
 
@@ -276,7 +345,14 @@ function rebuildPitches(keepSlots) {
   pitchOf = slotOf.map(row => row.map(slot => slotPitch(slot)));
   if (typeof clearSpriteCache === 'function') clearSpriteCache();
 }
-function midiName(m) { return NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+// 音名缓存：同一个 midi 只拼一次字符串。draw 每帧要取上百次音名，
+// 缓存后热路径不再产生临时字符串，也顺便给图形精灵提供了稳定的键。
+const MIDI_NAME = [];
+function midiName(m) {
+  let s = MIDI_NAME[m];
+  if (s === undefined) s = MIDI_NAME[m] = NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  return s;
+}
 const midiToFreq = m => 440 * Math.pow(2, (m - 69) / 12);
 
 // ---- 生成变奏：基于乐理规则的音级布局算法 ----
@@ -442,6 +518,7 @@ function shuffleAll() {                                // 生成变奏
   walls.clear();
   const rests = buildRestMask(0.36 + Math.random() * 0.08);   // 目标 36%–44%，实际约 32%–36%
   for (const k of rests) walls.add(k);
+  syncWallFlags();
 
   rebuildPitches(true);
   flashAll();
@@ -479,6 +556,99 @@ function updateAutoVariation() {
   }
 }
 
+// ---- 定时「声部随机」：每 4–8 小节随机重排声部激活状态 ----
+// 两条硬约束：
+//   1) 任意时刻必须保留 2–3 个声部处于激活状态（避免全灭无声或全鸣成墙）；
+//   2) 配置为「中音高 + 1/8」的声部承担主要旋律线条，尽量保持激活——
+//      已激活的先保住，需要补位时也优先补这类声部。
+const VOICE_AUTO_MIN_BARS = 4;                         // 间隔下限：4 个小节
+const VOICE_AUTO_MAX_BARS = 8;                         // 间隔上限：8 个小节
+let voiceAuto = false;                                 // 是否开启
+let vAutoStartStep = 0;                                // 本轮起始格点序号
+let vAutoLenSteps = 0;                                 // 本轮间隔长度（格点数），每次重新随机
+
+const isPreferredVoice = i => {                        // 是否「主旋律声部」：中音高 + 1/8
+  const c = voiceCfg[i];
+  return c.reg === 'mid' && c.div === 8;
+};
+function shuffled(arr) {                               // Fisher–Yates（不改原数组）
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function randomizeVoices() {
+  const cur = [];
+  for (let i = 0; i < VOICE_N; i++) if (voiceCfg[i].active) cur.push(i);
+
+  // 1) 保底：已激活且「中音高 + 1/8」的声部尽量保留（上限 3 个，满足 2–3 约束）
+  let keep = cur.filter(isPreferredVoice);
+  if (keep.length > 3) keep = shuffled(keep).slice(0, 3);
+  const next = new Set(keep);
+
+  // 2) 目标激活数 2 或 3；若保底声部已多于目标则不裁掉它们
+  let target = 2 + (Math.random() < 0.5 ? 0 : 1);
+  if (next.size > target) target = next.size;
+
+  // 3) 不足则补位：优先「中音高 + 1/8」的未激活声部，其次从其余声部随机取
+  if (next.size < target) {
+    const pool = [];
+    for (let i = 0; i < VOICE_N; i++) if (!next.has(i)) pool.push(i);
+    const order = shuffled(pool.filter(isPreferredVoice))
+      .concat(shuffled(pool.filter(i => !isPreferredVoice(i))));
+    for (const i of order) { if (next.size >= target) break; next.add(i); }
+  }
+
+  let changed = false;
+  for (let i = 0; i < VOICE_N; i++) {
+    const on = next.has(i);
+    if (voiceCfg[i].active !== on) { voiceCfg[i].active = on; changed = true; }
+  }
+
+  // 4) 兜底：若恰好随机到与当前完全相同的组合，交换一个非主旋律声部，
+  //    保证画面/听感持续推进（数量不变，仍满足 2–3 约束）
+  if (!changed) {
+    const removable = [...next].filter(i => !isPreferredVoice(i));
+    const idle = [];
+    for (let i = 0; i < VOICE_N; i++) if (!next.has(i)) idle.push(i);
+    if (removable.length && idle.length) {
+      const out = shuffled(removable)[0], inIdx = shuffled(idle)[0];
+      next.delete(out); next.add(inIdx);
+      voiceCfg[out].active = false; voiceCfg[inIdx].active = true;
+      changed = true;
+    }
+  }
+
+  if (changed) { syncBalls(); flashAll(); }
+}
+function randVAutoSteps() {
+  const bars = VOICE_AUTO_MIN_BARS + Math.random() * (VOICE_AUTO_MAX_BARS - VOICE_AUTO_MIN_BARS);
+  return Math.max(1, Math.round(bars * STEPS_PER_BAR));
+}
+function setVoiceAuto(on) {
+  voiceAuto = on;
+  vAutoStartStep = stepIndex;
+  vAutoLenSteps = randVAutoSteps();
+  const btn = document.getElementById('voiceAutoBtn');
+  btn.classList.toggle('on', on);
+  btn.style.setProperty('--auto-p', '0%');
+  if (on) randomizeVoices();                           // 开启即刻生效一次，给出即时反馈
+}
+// 与定时变奏同源：按「音乐拍点」计数，节拍绝对稳定，不受掉帧影响。
+function updateVoiceAuto() {
+  if (!voiceAuto || !playing) return;
+  const elapsed = stepIndex - vAutoStartStep;
+  const p = Math.min(1, elapsed / vAutoLenSteps);
+  document.getElementById('voiceAutoBtn').style.setProperty('--auto-p', (p * 100).toFixed(1) + '%');
+  if (elapsed >= vAutoLenSteps) {
+    vAutoStartStep = stepIndex;                        // 对齐当前拍点重新计时
+    vAutoLenSteps = randVAutoSteps();                  // 下一轮间隔重新在 4–8 小节间随机
+    randomizeVoices();
+  }
+}
+
 // ---- 密度：设定目标圆点尺寸，行列数按舞台宽高自适应（撑满 + 间距一致） ----
 // 切换密度时"基于当前变奏"重采样：把现有音级矩阵 / 闭音分布按归一化坐标
 // 映射到新网格，保持旋律轮廓与呼吸留白的位置关系，而不是重置成默认音阶。
@@ -510,7 +680,8 @@ function resampleVariation(oldRows, oldCols) {
     for (let c = 0; c < COLS; c++) {
       const or = Math.min(oldRows - 1, Math.max(0, Math.round((r + 0.5) / ROWS * oldRows - 0.5)));
       const oc = Math.min(oldCols - 1, Math.max(0, Math.round((c + 0.5) / COLS * oldCols - 0.5)));
-      if (walls.has(wKey(oc, or))) newWalls.add(wKey(c, r));
+      // 旧网格的键必须用旧的列数还原（此刻 COLS 已切换为新值）
+      if (walls.has(or * oldCols + oc)) newWalls.add(r * COLS + c);
     }
   }
 
@@ -521,6 +692,7 @@ function resampleVariation(oldRows, oldCols) {
   // 重采样是最近邻映射：密度变密时，原本分散在新网格中相邻的多格可能同时命中同一旧留白团，
   // 被"聚拢"成 ≥3 连续闭音 → 小球经过时连续多拍不发声。这里同样做行/列双向打断。
   breakLongRestRuns(walls);
+  syncWallFlags();
 }
 
 function applyDensity(v) {
@@ -538,6 +710,7 @@ function applyDensity(v) {
   } else {
     walls.clear();
     rebuildPitches(false);                            // 尚未变奏 → 用默认音阶
+    syncWallFlags();
   }
   rebuildPitches(true);                               // 依重采样后的 slotOf 重算音高
   updateField();
@@ -554,11 +727,47 @@ function applyDensity(v) {
 }
 
 // ---- 声部 ----
+// 6 个声部各自独立「激活/取消」，互不影响：点圆点 3 只切换声部 3，不影响 1、2。
+// 每个声部拥有独立可配置的「音高」(reg) 与「移动速度」(div)：
+//   reg: 'low' | 'mid' | 'high'  → 触发音高整体升降一个八度，形成低音/中音/高音声部
+//   div: 4 | 8 | 16              → 每 X 分音符移动一格（16 = 默认速度）；数字越小移动越慢
+// voiceCfg 是声部的「常驻配置」（6 项恒定存在，即使未激活也保留其音高/速度设置）；
+// balls 则是「已激活声部」的实际小球列表，每个球用 slot 记住自己属于哪个声部，
+// 因此取消再激活时位置会重新分配，但音高/速度与颜色（toneIdx = slot）保持不变。
+const VOICE_N = 6;
+// 6 个声部的专属色（画布小球与底部声部 UI 共用同一套色）：
+// 低饱和雅致色系，暗底上不刺眼，同时彼此可辨。
+const BALL_TONES = [
+  { h:204, s:38, l:62 },   // 声部1 灰青
+  { h:38,  s:46, l:66 },   // 声部2 香槟金
+  { h:288, s:26, l:64 },   // 声部3 藕紫
+  { h:172, s:30, l:58 },   // 声部4 雾松
+  { h:18,  s:36, l:62 },   // 声部5 陶土
+  { h:142, s:26, l:60 },   // 声部6 苔绿
+];
+const ballTone = slot => BALL_TONES[slot % BALL_TONES.length];
+// 默认声部编排：三条各司其职的线，叠起来就是一段完整好听的编配——
+//   声部1 中音 1/16 → 主旋律线（最密，撑起轮廓）
+//   声部2 低音 1/8  → 低音线（慢一半，稳住和声根基）
+//   声部3 高音 1/4  → 高音点缀（最稀疏，闪亮的高光）
+// 密度从上到下递减，天然形成"密-疏"对比，整体不会乱。
+const DEFAULT_VOICE_CFG = [
+  { active: true,  reg: 'mid',  div: 16 },   // 声部1 中 1/16
+  { active: true,  reg: 'low',  div: 8  },   // 声部2 低 1/8
+  { active: true,  reg: 'high', div: 4  },   // 声部3 高 1/4
+  { active: false, reg: 'mid',  div: 16 },
+  { active: false, reg: 'mid',  div: 16 },
+  { active: false, reg: 'mid',  div: 16 },
+];
+let voiceCfg = DEFAULT_VOICE_CFG.map(c => ({ ...c }));
 let balls = [];
-function makeBall(i, n) {
+const REG_OFF = { low: -12, mid: 0, high: 12 };    // 音区 → 半音偏移（一个八度）
+const ballSpdFactor = b => (b.div || 16) / 16;     // 速度倍率：1/16→1.0、1/8→0.5、1/4→0.25
+function makeBall(slot, n, idx) {
+  const cfg = voiceCfg[slot] || { reg: 'mid', div: 16 };
   // 沿网格中心列均匀分布，纵向错开（闭音点也可出生，仅不发声而已）
-  const col = Math.round((COLS - 1) * ((i + 1) / (n + 1)));
-  const row = Math.round((ROWS - 1) * (0.28 + 0.44 * (n === 1 ? 0.5 : i / (n - 1 || 1))));
+  const col = Math.round((COLS - 1) * ((idx + 1) / (n + 1)));
+  const row = Math.round((ROWS - 1) * (0.28 + 0.44 * (n === 1 ? 0.5 : idx / (n - 1 || 1))));
   const G = geo();
   return {
     x: G.cx(col),
@@ -570,22 +779,39 @@ function makeBall(i, n) {
     spd: 0.25 + Math.random() * 0.25,
     bumpTurn: 0,                               // 碰撞后转向加速的剩余时间（秒）
     col, row,
-    toneIdx: i % 6,
+    slot,                                      // 所属声部（0-5），决定颜色与配置归属
+    toneIdx: slot % 6,
+    reg: cfg.reg,                              // 音区：low / mid / high
+    div: cfg.div,                              // 移动速度：每 X 分音符一格
     flash: 0,
     bump: 0,                                   // 碰撞闪光（1→0 衰减）
     _moved: false,                             // 本拍是否发生格位变化（决定是否发声）
   };
 }
+// 按 voiceCfg 的激活状态重建声部列表：已存在的声部保留其运动状态与配置，
+// 新激活的声部创建新球，取消激活的声部直接移除。
 function syncBalls() {
-  const n = state.ballCount;
-  while (balls.length < n) balls.push(makeBall(balls.length, n));
-  balls.length = n;
+  const slots = [];
+  for (let i = 0; i < VOICE_N; i++) if (voiceCfg[i].active) slots.push(i);
+  const n = slots.length;
+  const prev = new Map(balls.map(b => [b.slot, b]));
+  const next = [];
+  slots.forEach((slot, idx) => {
+    let b = prev.get(slot);
+    if (!b) b = makeBall(slot, n, idx);
+    b.reg = voiceCfg[slot].reg;                 // 以常驻配置为准（球存在期间两者保持同步）
+    b.div = voiceCfg[slot].div;
+    next.push(b);
+  });
+  balls = next;
+  state.ballCount = n;
+  if (typeof renderVoices === 'function') renderVoices();
 }
 
 // ---- audio ----
 // 固定效果链：干声 → 压缩/限幅 → 输出；同时并联「HALL 混响」与「节奏延迟」两条湿声支路。
 // 不暴露任何选项，整体始终带一层大厅混响（Hall）+ 与 BPM 同步的延迟，使音色更饱满润泽。
-let AC = null, master, comp;
+let AC = null, master, comp, softClip;
 let dryBus, wetReverbIn, convolver, reverbGain, wetDelayIn, delayNode, feedback, delayGain;
 
 function initAudio() {
@@ -593,34 +819,43 @@ function initAudio() {
   AC = new (window.AudioContext || window.webkitAudioContext)();
 
   // 总线：干湿汇总 → 轻压缩（避免叠音削顶）→ 输出
-  // 延音加长后同时发声的尾音更多，总线能量上升，阈值下调让压缩更早介入，
-  // 保证连奏叠加时不削顶、整体响度平稳。
-  master = AC.createGain(); master.gain.value = 0.46;
+  // 氛围向改动后：释放段更长 + 混响/延迟湿声量更大 → 总线能量明显上升，
+  // 因此主增益再收一点、压缩阈值下调，保证长尾叠加时依旧不削顶、响度平稳。
+  master = AC.createGain(); master.gain.value = 0.32;
   comp = AC.createDynamicsCompressor();
-  comp.threshold.value = -18; comp.knee.value = 26; comp.ratio.value = 3.0;
-  comp.attack.value = 0.006; comp.release.value = 0.30;
-  master.connect(comp); comp.connect(AC.destination);
+  comp.threshold.value = -21; comp.knee.value = 26; comp.ratio.value = 3.8;
+  comp.attack.value = 0.006; comp.release.value = 0.35;
+  // 末级软削波（tanh 饱和）：小信号近似线性、几乎不损失动态，
+  // 大信号平滑压进 ±0.92 —— 长释放 + 大混响下 6 个声部同时叠加也绝不会数字削顶。
+  softClip = AC.createWaveShaper();
+  const _N = 2048, _c = new Float32Array(_N);
+  for (let i = 0; i < _N; i++) {
+    const x = (i / (_N - 1)) * 2 - 1;
+    _c[i] = 0.92 * Math.tanh(x / 0.92);
+  }
+  softClip.curve = _c; softClip.oversample = '4x';
+  master.connect(comp); comp.connect(softClip); softClip.connect(AC.destination);
 
   // 干声母线（所有音符先入此节点，再分别送往干/湿）
   dryBus = AC.createGain(); dryBus.gain.value = 1; dryBus.connect(master);
 
   // ---- HALL 混响：用程序生成的脉冲响应（衰减噪声）做卷积，得到大厅般的宽阔尾音 ----
   convolver = AC.createConvolver();
-  convolver.buffer = makeHallIR(AC, 2.8, 2.4);       // 2.8s 尾音、2.4 秒衰减
+  convolver.buffer = makeHallIR(AC, 4.2, 2.8);       // 4.2s 尾音、衰减更慢 → 更深的空气感
   const revLP = AC.createBiquadFilter();             // 柔化高频，模拟空气吸收
-  revLP.type = 'lowpass'; revLP.frequency.value = 3600; revLP.Q.value = 0.4;
+  revLP.type = 'lowpass'; revLP.frequency.value = 3000; revLP.Q.value = 0.4;
   wetReverbIn = AC.createGain(); wetReverbIn.gain.value = 1;
-  reverbGain = AC.createGain(); reverbGain.gain.value = 0.34;   // 固定湿声量（克制）
+  reverbGain = AC.createGain(); reverbGain.gain.value = 0.52;   // 湿声量（氛围向，明显更充沛）
   wetReverbIn.connect(revLP); revLP.connect(convolver);
   convolver.connect(reverbGain); reverbGain.connect(master);
 
   // ---- 节奏延迟：与 BPM 同步的 8 分音符延迟，反馈中叠低通让回声自然衰减 ----
   delayNode = AC.createDelay(2.0);
   delayNode.delayTime.value = (60 / state.bpm) * 0.5;   // 8 分音符
-  feedback = AC.createGain(); feedback.gain.value = 0.32;
-  const fbLP = AC.createBiquadFilter(); fbLP.type = 'lowpass'; fbLP.frequency.value = 2800;
+  feedback = AC.createGain(); feedback.gain.value = 0.42;
+  const fbLP = AC.createBiquadFilter(); fbLP.type = 'lowpass'; fbLP.frequency.value = 2200;
   wetDelayIn = AC.createGain(); wetDelayIn.gain.value = 1;
-  delayGain = AC.createGain(); delayGain.gain.value = 0.22;
+  delayGain = AC.createGain(); delayGain.gain.value = 0.34;
   wetDelayIn.connect(delayNode);
   delayNode.connect(fbLP); fbLP.connect(feedback); feedback.connect(delayNode);
   delayNode.connect(delayGain); delayGain.connect(master);
@@ -633,12 +868,14 @@ function makeHallIR(ac, seconds, decay) {
   const rate = ac.sampleRate;
   const len = Math.floor(rate * seconds);
   const ir = ac.createBuffer(2, len, rate);
+  const pre = Math.floor(rate * 0.018);              // 18ms 预延迟：干声先落定，再涌出大厅尾音
   for (let ch = 0; ch < 2; ch++) {
     const d = ir.getChannelData(ch);
     for (let i = 0; i < len; i++) {
-      const t = i / len;
-      // 前 12ms 预延迟（近似），之后按指数衰减；加一点早期反射密度变化
-      const env = Math.pow(1 - t, decay);
+      if (i < pre) { d[i] = 0; continue; }
+      const t = (i - pre) / (len - pre);
+      // 指数衰减 + 少量早期反射起伏，尾音更长更自然
+      const env = Math.pow(1 - t, decay) * (1 + 0.22 * Math.sin(i * 0.0009 + ch * 1.7));
       d[i] = (Math.random() * 2 - 1) * env;
     }
   }
@@ -654,54 +891,79 @@ function playNote(midi, vel = 1, when = 0) {
   const o = AC.createOscillator();
   // ---- 延音时长（秒）----
   // 以「拍」为单位设定，随 BPM 自动缩放：BPM 越快音符越短，避免快节奏下尾音互相糊住。
-  // 总体比早期版本明显加长，让相邻音符的尾音相互搭接，旋律线条更连贯（legato 感）。
+  // 整体偏氛围（ambient）：起音普遍放缓、释放段（ADSR 的 R）拉得很长，
+  // 让相邻音符的尾音互相搭接、融进混响与延迟，形成连绵的空气感而不是一颗颗音点。
   const beat = 60 / state.bpm;
-  let dur = beat * 1.5;
+  let dur = beat * 1.8;
+  // 统一的音色整形：先过一道柔和低通去掉硬边，再进包络与湿声支路
+  const tone = AC.createBiquadFilter();
+  tone.type = 'lowpass'; tone.Q.value = 0.5;
+
   if (state.timbre === 'pluck') {
-    // 拨弦：原本 0.48 拍过短促，拉长到约 1.5 拍，让琶音串成线
-    dur = beat * 1.5;
+    // 拨弦（保留原有性格）：清晰的三角波 + 一点锯齿泛音，起音利落；
+    // 仅把释放段略微放长、并加一道高切让它不那么刺，其余保持原样。
+    dur = beat * 1.8;
+    tone.frequency.value = 6200;
     o.type = 'triangle'; o.frequency.value = f;
     const o2 = AC.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = f;
-    const g2 = AC.createGain(); g2.gain.value = 0.22; o2.connect(g2); g2.connect(g);
+    const g2 = AC.createGain(); g2.gain.value = 0.20; o2.connect(g2); g2.connect(tone);
     o2.start(t); o2.stop(t + dur);
-    g.gain.setValueAtTime(0.5 * vel, t);
+    o.connect(tone);
+    g.gain.setValueAtTime(0.46 * vel, t);
     // 先保持一小段再指数衰减：起音扎实、尾音绵长，听感更像连奏而非点状击弦
     g.gain.exponentialRampToValueAtTime(0.28 * vel, t + dur * 0.18);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);          // 长释放
   } else if (state.timbre === 'bell') {
-    // 铃音：尾音天然长，再拉长约 2.6 拍，泛音在混响里延续更久
-    dur = beat * 2.6;
+    // 雾铃（氛围化铃音）：双正弦叠出的清透音体 + 极轻的 FM 金属光泽，
+    // 起音放缓，尾音拖到约 4 拍，泛音在混响里化成一片雾。
+    dur = beat * 4.0;
+    tone.frequency.value = 4200;
     o.type = 'sine'; o.frequency.value = f * 2;
     const mod = AC.createOscillator(); mod.frequency.value = f * 3.01;
-    const mg = AC.createGain(); mg.gain.value = f * 1.5;
-    mod.connect(mg); mg.connect(o.frequency); mod.start(t); mod.stop(t + dur);
-    g.gain.setValueAtTime(0.32 * vel, t);
-    // 铃音高频衰减快：先保持较久再收尾，实测有效尾音更长、泛音在混响里延续更自然
+    const mg = AC.createGain(); mg.gain.value = f * 0.85;         // 调制指数降低 → 少了金属锐利，多了温润
+    mod.connect(mg); mg.connect(o.frequency); mod.start(t); mod.stop(t + dur * 0.6);
+    const o2 = AC.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2.004;
+    const g2 = AC.createGain(); g2.gain.value = 0.34; o2.connect(g2); g2.connect(tone);
+    o2.start(t); o2.stop(t + dur);
+    o.connect(tone);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.25 * vel, t + 0.06);          // 柔起音
     g.gain.exponentialRampToValueAtTime(0.16 * vel, t + dur * 0.42);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
+    g.gain.exponentialRampToValueAtTime(0.0006, t + dur);          // 很长很长的释放
   } else if (state.timbre === 'pad') {
-    // 柔垫：本身就是长音，拉到约 3.2 拍，形成持续铺底的和声层
-    dur = beat * 3.2;
+    // 云垫（氛围柔垫）：三个微失谐正弦叠成宽阔音团，慢起音、几乎不衰减，
+    // 释放段最长（约 4.6 拍），像一层缓慢呼吸的和声雾。
+    dur = beat * 4.6;
+    tone.frequency.value = 2600;
     o.type = 'sine'; o.frequency.value = f;
     const o2 = AC.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.006;
-    const g2 = AC.createGain(); g2.gain.value = 0.5; o2.connect(g2); g2.connect(g);
-    o2.start(t); o2.stop(t + dur);
+    const g2 = AC.createGain(); g2.gain.value = 0.5; o2.connect(g2); g2.connect(tone);
+    const o3 = AC.createOscillator(); o3.type = 'sine'; o3.frequency.value = f * 0.997;
+    const g3 = AC.createGain(); g3.gain.value = 0.38; o3.connect(g3); g3.connect(tone);
+    o2.start(t); o2.stop(t + dur); o3.start(t); o3.stop(t + dur);
+    o.connect(tone);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.26 * vel, t + 0.10);          // 慢起音
-    g.gain.linearRampToValueAtTime(0.20 * vel, t + dur * 0.55);    // 长保持段（几乎不衰减）
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);           // 末段才收尾
+    g.gain.linearRampToValueAtTime(0.20 * vel, t + 0.22);          // 更慢的起音 → 云一样浮现
+    g.gain.linearRampToValueAtTime(0.16 * vel, t + dur * 0.6);     // 长保持段（几乎不衰减）
+    g.gain.exponentialRampToValueAtTime(0.0006, t + dur);          // 末段才收尾
   } else {
-    // 低音：原本 0.42 拍太短，拉长到约 1.6 拍，让低音线条撑住和声、更连贯
-    dur = beat * 1.6;
-    o.type = 'square'; o.frequency.value = f / 2;
-    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
-    o.connect(lp); lp.connect(g);
-    g.gain.setValueAtTime(0.4 * vel, t);
-    g.gain.exponentialRampToValueAtTime(0.26 * vel, t + dur * 0.35);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.97);
+    // 深空低音（氛围化低音）：正弦基音 + 少量三角泛音定形，去掉原来的方波硬感；
+    // 慢起音、长释放，低音线条像远处的地平线一样持续铺底。
+    dur = beat * 3.8;
+    tone.frequency.value = 700;
+    o.type = 'sine'; o.frequency.value = f / 2;
+    const o2 = AC.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f;
+    const g2 = AC.createGain(); g2.gain.value = 0.16; o2.connect(g2); g2.connect(tone);
+    o2.start(t); o2.stop(t + dur);
+    o.connect(tone);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.29 * vel, t + 0.16);          // 柔起音
+    g.gain.exponentialRampToValueAtTime(0.18 * vel, t + dur * 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0006, t + dur);          // 长释放
   }
-  o.connect(g);
-  o.start(t); o.stop(t + dur);
+  tone.connect(g);                                    // 音色整形 → 包络 → 干/湿母线
+  o.connect(tone);
+  o.start(t); o.stop(t + dur + 0.05);
   // 每次发声向混响/延迟支路各送一份（湿声量已由固定增益控制）
   g.connect(wetReverbIn);
   g.connect(wetDelayIn);
@@ -722,15 +984,17 @@ function resetClock() {
   nextStepTime = AC.currentTime + 0.06;   // 留一点启动余量
   stepIndex = 0;
   barStartStep = 0;                        // 定时变奏的小节计数与格点对齐归零
+  vAutoStartStep = 0;                      // 声部随机的计数同样归零
 }
 // 每个 16 分音符格点的动作：只有「本拍相对上一拍发生了格位变化」的声部才发声。
 // 这样音符严格落在 1/16 格点上（节奏感稳定），又保留了"移动才算一个音"的旋律呼吸，
 // 避免每拍所有声部齐鸣造成的噪音墙。
 function onSixteenthStep(when) {
   for (const b of balls) {
-    const midi = pitchOf[b.row]?.[b.col];
-    if (midi == null) continue;
-    if (walls.has(wKey(b.col, b.row))) continue;      // 闭音点不发声
+    const m0 = pitchOf[b.row]?.[b.col];
+    if (m0 == null) continue;
+    const midi = m0 + (REG_OFF[b.reg] || 0);          // 音区：低/中/高 → 整体升降一个八度
+    if (wallFlags[b.row * COLS + b.col]) continue;    // 闭音点不发声（查预计算表）
     if (!b._moved) continue;                           // 驻留拍不发声 → 形成自然的音符疏密
     b._moved = false;
     // 速度/音高包络：高点音略亮
@@ -754,6 +1018,22 @@ function pumpClock() {
 
 // 连续模式的声部活动范围 = 网格中心点围成的区域，保证与音点一一对应
 let FIELD = { x0: 0, y0: 0, x1: 1, y1: 1 };
+// 每个音点到舞台中心的距离相位（预计算）：draw 里「水面呼吸」只需查表 + 一次 sin，
+// 不必每帧对每个音点各做一次 hypot（全网格 165 个点 × 60fps 是笔可观的开销）。
+let breathPhase = new Float32Array(0);
+const WATER_K = (Math.PI * 2) / 132;                 // 常驻微波波长 132px
+function updateBreathPhase() {
+  const G = geo();
+  const n = COLS * ROWS;
+  if (breathPhase.length !== n) breathPhase = new Float32Array(n);
+  const cxm = W * 0.5, cym = H * 0.5;
+  for (let j = 0; j < ROWS; j++) {
+    const dy = G.cy(j) - cym, base = j * COLS;
+    for (let i = 0; i < COLS; i++) {
+      breathPhase[base + i] = WATER_K * Math.hypot(G.cx(i) - cxm, dy);
+    }
+  }
+}
 function updateField() {
   const G = geo();
   // 声部坐标范围 = 网格内圈（各留半格），与音点中心一一对应
@@ -761,6 +1041,7 @@ function updateField() {
     x0: G.cx(0), y0: G.cy(0),
     x1: G.cx(COLS - 1), y1: G.cy(ROWS - 1),
   };
+  updateBreathPhase();
 }
 // 位置 → 所在的几何格（floor，按真实边界划分，不再 round 到最近中心）
 const cellColOf = x => {
@@ -778,15 +1059,34 @@ const clampRow = cellRowOf;
 
 function stepBall(b, dt) {
   // 闭音音点不再是障碍：声部可自由移动到任意音点，只是落在闭音点上不发声。
-  // 轨迹三选一：布朗（随机游走）/ 直线（平滑直线往返）/ 圆形（沿圆周运动）。
+  // 轨迹四选一：布朗（随机游走）/ 直线（45°·90° 往返）/ 圆形（圆周）/ 三角（黄金三角形环绕）。
   const G = geo();
   const F = FIELD;
+
+  // ---- 三角：沿黄金三角形三边匀速环绕；三角整体缓慢自转 ----
+  if (state.mode === 'tri') {
+    if (!b.tri) initTri(b);
+    const T = b.tri;
+    // 自转/中心被动过之后夹回场内，保证三角始终完整落在舞台上
+    T.cx = Math.min(F.x1 - T.R, Math.max(F.x0 + T.R, T.cx));
+    T.cy = Math.min(F.y1 - T.R, Math.max(F.y0 + T.R, T.cy));
+    T.rot += T.spin * dt;                               // 三角自转（缓缓转动）
+    T.u += T.spd * ballSpdFactor(b) * dt * T.sgn;       // 沿回路推进（受该声部速度档位缩放）
+    T.u = (T.u % 3 + 3) % 3;                            // 回绕到 [0,3)：3 条边合为一圈
+    const seg = Math.floor(T.u), f = T.u - seg;         // 所在边 + 边内进度
+    const A = triVert(T, seg), B = triVert(T, (seg + 1) % 3);
+    b.x = A.x + (B.x - A.x) * f;
+    b.y = A.y + (B.y - A.y) * f;
+    const gc = cellColOf(b.x), gr = cellRowOf(b.y);
+    if (gc !== b.col || gr !== b.row) { b.col = gc; b.row = gr; b._moved = true; }
+    return 'enter';
+  }
 
   // ---- 圆形：绕自身圆心做圆周运动；半径以「2 个 BAR」为周期随机变化 ----
   if (state.mode === 'circle') {
     if (b.circle == null) initCircle(b);
     const c = b.circle;
-    c.phase += c.speed * dt;                            // 匀速推进角相位
+    c.phase += c.speed * ballSpdFactor(b) * dt;         // 匀速推进角相位（受该声部速度档位缩放）
     // 半径呼吸：以音乐时间（1/16 拍点序号）为基准，每 2 个 BAR（=32 个 16 分音符）为一个周期，
     // 周期开始抽一个随机目标半径，用 smoothstep 在整个周期内平滑逼近 → 与节拍同步的柔和律动。
     // 暂未播放时（stepIndex 不推进）退回帧时间驱动，保证静态预览下也有呼吸。
@@ -825,9 +1125,12 @@ function stepBall(b, dt) {
   // ---- 直线：45°/90° 随机方向的匀速直线运动，边界反弹 ----
   if (state.mode === 'line') {
     if (!b._dirSet) { pickLineDir(b); b._dirSet = true; }
-    const speed = 0.5;
-    let nx = b.x + b.dirX * speed * dt * 260;
-    let ny = b.y + b.dirY * speed * dt * 260;
+    const speed = 0.5 * ballSpdFactor(b);              // 直线速度（受该声部速度档位缩放）
+    // 方向归一化：45° 对角方向的模长为 √2，不归一化会导致对角比正交快 41%，
+    // 使「速度」档位失真。这里除以模长，保证任何方向速度一致。
+    const nrm = 1 / (Math.hypot(b.dirX, b.dirY) || 1);
+    let nx = b.x + b.dirX * nrm * speed * dt * 260;
+    let ny = b.y + b.dirY * nrm * speed * dt * 260;
     // 撞到边界 → 不反射，而是随机换一个 45°/90° 新方向（并贴回边界内侧）
     let bumped = false, avoid = { x: 0, y: 0 };
     if (nx < F.x0) { nx = F.x0; bumped = true; avoid.x = -1; }       // 左墙 → 禁止继续向左
@@ -883,8 +1186,9 @@ function stepBall(b, dt) {
   b.vx = Math.cos(b.heading) * b.spd;
   b.vy = Math.sin(b.heading) * b.spd;
 
-  let nx = b.x + b.vx * dt * 260;
-  let ny = b.y + b.vy * dt * 260;
+  const sf = ballSpdFactor(b);                          // 该声部的速度倍率
+  let nx = b.x + b.vx * dt * 260 * sf;
+  let ny = b.y + b.vy * dt * 260 * sf;
   // 贴回硬边界（兜底，避免极端 dt 下越界）
   if (nx < F.x0) nx = F.x0; else if (nx > F.x1) nx = F.x1;
   if (ny < F.y0) ny = F.y0; else if (ny > F.y1) ny = F.y1;
@@ -914,6 +1218,34 @@ function initCircle(b) {
     speed: (0.5 + Math.random() * 0.5) * (Math.random() < 0.5 ? 1 : -1),  // 顺/逆时针
   };
 }
+// ---- 三角（黄金三角线）：沿黄金三角形的三条边匀速环绕 ----
+// 黄金三角形 = 顶角 36°、两底角 72° 的等腰三角形（腰与底之比为黄金比 φ≈1.618）。
+// 三个顶点落在同一外接圆上、圆心角间隔 72°/72°/144°，圆周角恰为 36°/72°/72°。
+// 三角形整体缓慢自转（黄金角节奏），小球沿三边依次滑行 —— 与圆形的圆周、直线的往返形成第三种对照：
+// 有棱角的直线段 + 整体的旋转，读作"一片缓缓转动的金色三角在流动"。
+const TRI_GAP = Math.PI * 2 / 5;                     // 相邻顶点圆心角 72°
+function initTri(b) {
+  const F = FIELD;
+  const w = Math.max(1, F.x1 - F.x0), h = Math.max(1, F.y1 - F.y0);
+  // 外接圆半径：三角最长跨度 = 底边 2R·sin72° ≈ 1.902R，需整只落在场内 → 取舞台较窄一边的 44%
+  const R = Math.min(w * 0.44, h * 0.30);
+  const cx = Math.min(F.x1 - R, Math.max(F.x0 + R, b.x));
+  const cy = Math.min(F.y1 - R, Math.max(F.y0 + R, b.y));
+  b.tri = {
+    cx, cy, R,
+    rot: Math.random() * Math.PI * 2,                // 三角朝向（缓慢自转）
+    u: Math.random() * 3,                            // 沿回路进度 0..3（整数 = 顶点）
+    sgn: Math.random() < 0.5 ? 1 : -1,               // 环绕方向（顺 / 逆）
+    spin: (0.05 + Math.random() * 0.05) * (Math.random() < 0.5 ? 1 : -1),  // 自转角速度 rad/s
+    spd: 0.30 + Math.random() * 0.16,                // 每秒走过的"边数"（受声部速度档位缩放）
+  };
+}
+// 取三角第 k 个顶点（世界坐标）：顶点 0 朝上，其余按 72° 间隔落在同一外接圆上
+function triVert(T, k) {
+  const a = T.rot - Math.PI / 2 + k * TRI_GAP;
+  return { x: T.cx + Math.cos(a) * T.R, y: T.cy + Math.sin(a) * T.R };
+}
+
 // 直线：从 45°/90° 取向中随机挑一个方向（含正负 → 8 个方向）
 // avoid = { x: +1/-1/0, y: +1/-1/0 }：禁止朝该方向（撞墙后避免立刻再次越界）
 function pickLineDir(b, avoid) {
@@ -937,8 +1269,10 @@ function pickLineDir(b, avoid) {
 function resetBallMotion() {
   for (const b of balls) {
     b.circle = null;
+    b.tri = null;
     b._dirSet = false;
     if (state.mode === 'circle') initCircle(b);
+    if (state.mode === 'tri') initTri(b);
     if (state.mode === 'line') {
       pickLineDir(b); b._dirSet = true;                 // 45°/90° 随机
     }
@@ -1043,6 +1377,18 @@ function reactCollision(a, b, nx, ny) {
     }
     return;
   }
+  if (state.mode === 'tri') {
+    // 三角：改换环绕方向（顺/逆互换）+ 三角中心被推开一点 —— 撞后沿三角形反着走，像被撞得"翻了个向"
+    if (a.tri) {
+      a.tri.sgn *= -1;
+      a.tri.cx -= nx * 8; a.tri.cy -= ny * 8;
+    }
+    if (b.tri) {
+      b.tri.sgn *= -1;
+      b.tri.cx += nx * 8; b.tri.cy += ny * 8;
+    }
+    return;
+  }
 }
 // 碰撞后为直线模式的球挑一个新方向：50% 取 90°（上下左右）、50% 取 45°（对角）。
 // 关键：新方向必须"沿法线真正远离对方"——该方向在法线上的投影必须严格 > 0，
@@ -1109,6 +1455,7 @@ const ambient = { level: 0, hue: 0.5 };
 const ambientEl = document.getElementById('ambient');
 const pulseEl = document.getElementById('pulse');
 let _lastPulseWrite = -1;
+let _lastHueTs = 0, _lastHueVal = -1;               // 光晕色相的限频/量化（见主循环）
 
 // ---- 音点触发涟漪：每次发声在对应音点上扩散一圈柔光 ----
 // 点亮（glow）与涟漪环（ring）各自独立计时：
@@ -1147,11 +1494,111 @@ function updateRipples(dt) {
   }
 }
 
+// ---- 整体水波：让所有音高球像浮在水面上一样轻柔起伏 ----
+// 关键：只作用于「渲染位移」，不改动 b.x / b.y，因此格位判定、碰撞、发声逻辑完全不受影响，
+// 画面柔和浮动但音乐照常精准。
+// 由两部分叠加，全部是连续函数（无逐帧随机），保证平滑过渡、绝不抖动：
+//   1) 常驻微波：自画面中心缓慢向外扩散的正弦波，幅度 ±1.6px 上下，
+//      营造"漂浮在水面"的呼吸感，始终存在；
+//   2) 偶发涟漪：每 3.6–7 秒在中心或随机位置"落一滴"，一圈高斯波前向外扩散，
+//      经过小球时把它轻轻朝外推开一点（峰值约 5–6px；中心落点即为"中间散开"）。
+const water = { t: 0, next: 1.6, pulses: [], melodyCd: 0 };
+function dropRipple(x, y, amp, sigma) {
+  water.pulses.push({ x, y, r: 0, life: 1, amp, sigma, spd: 92 + Math.random() * 46 });
+  if (water.pulses.length > 6) water.pulses.shift();   // 上限保护
+}
+function updateWater(dt) {
+  water.t += dt;
+  water.next -= dt;
+  water.melodyCd -= dt;                             // 旋律涟漪的限频冷却
+  if (water.next <= 0) {
+    water.next = 3.6 + Math.random() * 3.4;           // 下一滴在 3.6–7.0 秒后
+    if (Math.random() < 0.6) {                        // 多数从中心散开
+      dropRipple(W * 0.5, H * 0.5, 5.6, 54);
+    } else {                                          // 少数从随机音点位置散开
+      const G = geo();
+      const c = Math.floor(Math.random() * COLS), r = Math.floor(Math.random() * ROWS);
+      dropRipple(G.cx(c), G.cy(r), 4.8, 46);
+    }
+  }
+  for (let i = water.pulses.length - 1; i >= 0; i--) {
+    const w = water.pulses[i];
+    w.r += w.spd * dt;                                // 波前匀速向外推进
+    w.life -= dt / 3.4;                               // 3.4 秒内平滑衰减归零
+    if (w.life <= 0) water.pulses.splice(i, 1);
+  }
+}
+// 求某点被水波推开的位移（px）。径向朝外，幅度小、包络平滑。
+function waterOffset(x, y) {
+  const cx = W * 0.5, cy = H * 0.5;
+  const dx = x - cx, dy = y - cy;
+  const d = Math.hypot(dx, dy) || 1e-3;
+  const nx = dx / d, ny = dy / d;
+  // 1) 常驻微波：正弦行波，远端略微收敛，边缘也保持柔和
+  let amp = 1.6 * Math.sin(WATER_K * d - water.t * 1.15);
+  amp *= 0.5 + 0.5 * Math.exp(-d / (Math.max(W, H) * 0.85));
+  // 2) 涟漪脉冲：高斯波前（越接近波前越强，前后皆平滑趋零）
+  for (const w of water.pulses) {
+    const q = (Math.hypot(x - w.x, y - w.y) - w.r) / w.sigma;
+    amp += w.amp * Math.exp(-q * q) * w.life;
+  }
+  return { x: nx * amp, y: ny * amp };
+}
+// 取小球「含水波位移」的绘制坐标（不改变物理位置）
+function ballDrawPos(b) {
+  const o = waterOffset(b.x, b.y);
+  return { x: b.x + o.x, y: b.y + o.y };
+}
+
+// ---- 音点亮度能量场：让亮度变化真正「随旋律起伏」----
+// 每个被奏响的音点向周围晕染一丝暖光能量（高斯衰减），能量随时间指数缓慢回落。
+// 于是画布上的亮斑群总是刚刚被奏响（或邻近刚奏响）的音区——旋律走到哪里，
+// 微光就跟到哪里，宛如水面的粼粼波光随着乐句流动。
+const dotEnergy = new Map();                         // wKey(c,r) -> 0..1
+function depositEnergy(col, row, amt) {
+  const R = 2;                                       // 晕染半径（格）
+  for (let dr = -R; dr <= R; dr++) {
+    for (let dc = -R; dc <= R; dc++) {
+      const d2 = dc * dc + dr * dr;
+      const w = Math.exp(-d2 / 2.2);                 // 高斯衰减：越近越亮
+      if (w < 0.05) continue;                        // 太远的忽略，控制计算量
+      const c = col + dc, r = row + dr;
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      const k = r * COLS + c;
+      if (wallFlags[k]) continue;                    // 闭音点不参与发光
+      dotEnergy.set(k, Math.min(1, (dotEnergy.get(k) || 0) + amt * w));
+    }
+  }
+  if (dotEnergy.size > 400) dotEnergy.clear();       // 极端保护（理论上限=格数）
+}
+function updateDotEnergy(dt) {
+  const decay = Math.pow(0.55, dt);                  // 每秒回落到 55%（约 2 秒余韵）
+  for (const [k, v] of dotEnergy) {
+    const nv = v * decay;
+    if (nv < 0.01) dotEnergy.delete(k); else dotEnergy.set(k, nv);
+  }
+}
+// 每帧的「触发高亮强度表」（整数格号 → 0..1）。复用同一个 Map 实例，避免逐帧新建 + 字符串键。
+const glowOf = new Map();
+const MAX_BLOOM = 20;                                // 每帧最多绘制多少个弥散晕（按强度取最亮的）
+const bloomPk = [];                                  // 打包数组，复用避免逐帧分配
+
 // ---- loop ----
-let last = 0;
+let last = 0, lastDrawTs = 0, rafId = 0, loopPaused = false;
+// 页面不可见且未播放时，主循环会被停掉；重新可见或点播放时用这里恢复
+function resumeLoop() {
+  if (!rafId) {
+    last = 0; lastDrawTs = 0; loopPaused = false;
+    rafId = requestAnimationFrame(frame);
+  }
+}
 function frame(ts) {
-  requestAnimationFrame(frame);
-  if (!last) { last = ts; return; }
+  rafId = requestAnimationFrame(frame);
+  if (!last) { last = ts; lastDrawTs = ts; return; }
+  // 静止态（未播放）降载：30fps 已足够表现极慢的水面呼吸，主循环开销直接减半；
+  // 播放中保持满帧，让触发闪动、涟漪、音点亮度这些与节拍绑定的动效足够顺滑。
+  if (!playing && ts - lastDrawTs < 32) return;
+  lastDrawTs = ts;
   const dt = Math.min(0.05, (ts - last) / 1000); last = ts;
   const stepDur = sixteenthDur();                       // 1/16 音符时长（视觉同步用）
 
@@ -1164,10 +1611,20 @@ function frame(ts) {
     // 视觉反馈：时钟在本帧前调度了该声部的发声 → 触发闪动/涟漪（与音频同时刻）
     if (b._pendingFlash) {
       b._pendingFlash = false;
-      const midi = pitchOf[b.row]?.[b.col];
+      const m0 = pitchOf[b.row]?.[b.col];
+      const midi = m0 == null ? null : m0 + (REG_OFF[b.reg] || 0);
       if (midi != null) {
         b.flash = 1;
         spawnRipple(b.col, b.row, pitchTone(midi));
+        // 亮度能量晕染：刚奏响的音点把微光分给邻近音点 → 亮斑群随旋律流动
+        depositEnergy(b.col, b.row, 0.45);
+        // 随旋律的水波：偶发地从刚奏响的位置荡开一圈柔涟漪（限频，避免过密），
+        // 使水面起伏与乐句同步，而不是机械地按固定时间滴落
+        if (water.melodyCd <= 0 && Math.random() < 0.4) {
+          const GW = geo();
+          dropRipple(GW.cx(b.col), GW.cy(b.row), 3.4, 42);
+          water.melodyCd = 1.6 + Math.random() * 1.8;
+        }
         const t = Math.max(0, Math.min(1, (midi - ROOT_BASE) / 30));
         ambient.level = Math.min(1, ambient.level + 0.30 + t * 0.22);
         ambient.hue = t;
@@ -1180,7 +1637,10 @@ function frame(ts) {
   if (playing) collideBalls();
   if (!playing) for (const b of balls) if (b.flash > 0) b.flash -= dt * 2.6;
   updateRipples(dt);
+  updateWater(dt);
+  updateDotEnergy(dt);
   updateAutoVariation();
+  updateVoiceAuto();
   for (let i = flashMarks.length - 1; i >= 0; i--) {
     flashMarks[i].life -= dt;
     if (flashMarks[i].life <= 0) flashMarks.splice(i, 1);
@@ -1195,10 +1655,16 @@ function frame(ts) {
   if (q !== _lastPulseWrite) {
     _lastPulseWrite = q;
     pulseEl.style.opacity = (lv * 0.9).toFixed(3);
-    // 光晕色相随音高漂移：低音偏灰青，高音偏香槟金
-    pulseEl.style.setProperty('--pulse-h', Math.round(204 - 166 * ambient.hue));
     ambientEl.style.opacity = (0.62 + lv * 0.38).toFixed(3);
     ambientEl.style.transform = `scale(${(1 + lv * 0.025).toFixed(4)})`;
+  }
+  // 光晕色相随音高漂移：低音偏灰青，高音偏香槟金。
+  // 改这个变量会让整层 radial-gradient 重新光栅化，是样式侧最贵的一项 →
+  // 限频到 8Hz 并量化到 4°；0.6s 的 CSS 过渡会把台阶完全抹平，肉眼无差别。
+  if (ts - _lastHueTs > 125) {
+    _lastHueTs = ts;
+    const hq = Math.round((204 - 166 * ambient.hue) / 4) * 4;
+    if (hq !== _lastHueVal) { _lastHueVal = hq; pulseEl.style.setProperty('--pulse-h', hq); }
   }
 
   draw();
@@ -1231,36 +1697,53 @@ function lerpStop(t) {
   let h = (a.h + dh * k + 360) % 360;
   return { h, s: a.s + (b.s - a.s) * k, l: a.l + (b.l - a.l) * k };
 }
+// 音高 → 色调缓存：同一 midi 反复取值（每帧每格都要），缓存后不再逐帧新建 {h,s,l} 对象，
+// 也让精灵缓存可以简单地按 midi 索引（一个音高对应唯一一套色调/音名）。
+const toneCache = [];
 function pitchTone(midi) {
-  const t = Math.max(0, Math.min(1, (midi - ROOT_BASE) / 30));
-  return lerpStop(t);
+  let t = toneCache[midi];
+  if (t === undefined) {
+    const u = Math.max(0, Math.min(1, (midi - ROOT_BASE) / 30));
+    t = toneCache[midi] = lerpStop(u);
+  }
+  return t;
 }
 
 // ---- draw ----
 // 网格精确铺满舞台：cw = 可用宽/COLS、ch = 可用高/ROWS（两轴独立等分）。
 // 行列数由 computeGrid() 按统一目标格径推算，故 cw ≈ ch，四周间隙基本一致；
 // 圆点半径取 min(cw,ch) 的固定比例——任何窗口比例下都整齐撑满、无侧边空缺。
+// 几何缓存：W/H/COLS/ROWS 未变时复用同一个对象（含 cx/cy 闭包）。
+// stepBall、cellColOf/Row、draw 等每帧会调用 geo() 多次，缓存后不再反复新建对象和闭包。
+let _G = null, _gW = -1, _gH = -1, _gC = -1, _gR = -1;
 function geo() {
+  if (_G && W === _gW && H === _gH && COLS === _gC && ROWS === _gR) return _G;
+  _gW = W; _gH = H; _gC = COLS; _gR = ROWS;
   const pad = 6;
   const cw = (W - pad * 2) / COLS;
   const ch = (H - pad * 2) / ROWS;
   const cell = Math.min(cw, ch);
-  return {
+  _G = {
     cell, cw, ch,
     r: cell * 0.42,
     cx: i => pad + cw * (i + 0.5),
     cy: j => pad + ch * (j + 0.5),
     ox: pad, oy: pad, gw: cw * COLS, gh: ch * ROWS,
   };
+  return _G;
 }
-// cache of pre-rendered dot sprites, keyed by tone
-const dotSprites = new Map();
-function dotSprite(tone, muted, r) {
-  const key = `${muted ? 'm' : 'p'}${Math.round(tone.h)}|${Math.round(tone.s)}|${Math.round(tone.l)}|${Math.round(r * 2)}`;
-  if (dotSprites.has(key)) return dotSprites.get(key);
-  const pad = 4, s = Math.ceil((r + pad) * 2);
+// ---- 音点图形预渲染（sprite） ----
+// 关键改动：sprite 只按「固定基准半径 geo().r」渲染一次，触发时的放大交给 drawImage 的缩放，
+// 于是缓存数量恒定为（音高数 × 静音变体），不会因为逐帧微变的半径把缓存撑爆、每帧新建 canvas。
+// 音名也一并烘焙进 sprite → 静止态整帧 0 次 fillText（只在点亮时补一层提亮文字）。
+let sprPos = [], sprMut = [];                     // 按 midi 索引：亮态 / 静音态
+function dotSprite(tone, muted, label) {
+  const r = geo().r;                              // 基准半径（恒定）
+  // pad 只留给外晕的最外圈（几乎全透明），2.5 已足够 —— 每点省下的边距乘以 180 个音点，
+  // 是又一笔白捡的填充量
+  const pad = 2.5, s = Math.ceil((r + pad) * 2);
   const c = document.createElement('canvas');
-  c.width = c.height = s * DPR;
+  c.width = c.height = Math.round(s * DPR);
   const g = c.getContext('2d');
   g.scale(DPR, DPR);
   const cx = s / 2, cy = s / 2;
@@ -1304,11 +1787,29 @@ function dotSprite(tone, muted, r) {
     ? 'rgba(80,84,94,0.14)'
     : `hsla(${h},${sat}%,${Math.min(62, l + 14)}%,0.15)`;
   g.beginPath(); g.arc(cx, cy, r - 0.4, 0, Math.PI * 2); g.stroke();
-  const spr = { canvas: c, s };
-  dotSprites.set(key, spr);
-  return spr;
+  // 音名（烘焙进 sprite —— 静止态不再逐帧 fillText）
+  if (label && r >= 7.2) {
+    const fs = Math.max(6, Math.min(10.5, r * 0.58));
+    g.font = `${fs}px -apple-system,"SF Pro Text","PingFang SC",sans-serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = muted
+      ? 'rgba(110,112,120,0.20)'
+      : `hsla(${h},${Math.min(26, sat + 8)}%,${Math.min(98, l + 34)}%,0.42)`;
+    g.fillText(label, cx, cy + 0.6);
+  }
+  return { canvas: c, s };
 }
-function clearSpriteCache() { dotSprites.clear(); }
+function posSprite(midi) {
+  let sp = sprPos[midi];
+  if (!sp) sp = sprPos[midi] = dotSprite(pitchTone(midi), false, midiName(midi));
+  return sp;
+}
+function mutSprite(midi) {
+  let sp = sprMut[midi];
+  if (!sp) sp = sprMut[midi] = dotSprite(PAL.mute, true, midiName(midi));
+  return sp;
+}
+function clearSpriteCache() { sprPos = []; sprMut = []; }
 
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -1316,45 +1817,64 @@ function draw() {
   const G = geo();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
+  // 音名字号只与格径有关 → 整帧设一次（原实现逐格设置 font）
+  const showLabel = G.r >= 7.2;
+  const labelFont = `${Math.max(6, Math.min(10.5, G.r * 0.58))}px -apple-system,"SF Pro Text","PingFang SC",sans-serif`;
+
   // 计算每个音点当前的"触发高亮强度"（0..1）：使用点亮自身的包络（起亮→保持→缓慢回落），
   // 比涟漪环持续更久、峰值更稳，因此"亮起"更明显、退得更从容。
-  const glowOf = new Map();
+  // 复用同一个 Map（每帧只清空），键为整数格号 → 零字符串分配、零 Map 重建。
+  glowOf.clear();
   for (const rp of ripples) {
     const g = rp.glow || 0;
-    const k = glowOf.get(wKey(rp.col, rp.row)) || 0;
-    if (g > k) glowOf.set(wKey(rp.col, rp.row), g);
+    const k = rp.row * COLS + rp.col;
+    if (g > (glowOf.get(k) || 0)) glowOf.set(k, g);
+  }
+  // 旋律能量晕染：把能量场的微光并进高亮（强度打折、低阈值裁剪，保持轻柔）。
+  // 能量只落在「刚被奏响或邻近刚奏响」的音点上 → 亮斑群跟着旋律走。
+  for (const [k, v] of dotEnergy) {
+    const g = v * 0.6;
+    if (g < 0.02) continue;
+    if (g > (glowOf.get(k) || 0)) glowOf.set(k, g);
   }
 
+  const tW = water.t * 1.15;                          // 水面呼吸相位（与小球水波同相）
   for (let j = 0; j < ROWS; j++) {
+    const rowBase = j * COLS;
     for (let i = 0; i < COLS; i++) {
-      const muted = walls.has(wKey(i, j));
+      const idx = rowBase + i;
+      const muted = wallFlags[idx] === 1;
       const midi = pitchOf[j][i];
       const x = G.cx(i), y = G.cy(j);
-      const tone = muted ? PAL.mute : pitchTone(midi);
-      const glow = muted ? 0 : (glowOf.get(wKey(i, j)) || 0);
-      // 触发时放大（最多 +14%），亮起瞬间更"跳"一点
-      const rr = G.r * (1 + glow * 0.14);
-      const spr = dotSprite(tone, muted, rr);
-      ctx.drawImage(spr.canvas, x - spr.s / 2, y - spr.s / 2, spr.s, spr.s);
+      const glow = muted ? 0 : (glowOf.get(idx) || 0);
+      // 触发时放大（最多 +14%），亮起瞬间更"跳"一点。sprite 按固定基准半径缓存，这里只做缩放。
+      const sc = 1 + glow * 0.14;
+      const spr = muted ? mutSprite(midi) : posSprite(midi);
+      const s = spr.s * sc;
+      // 极轻的「水面呼吸」：所有音点随中心扩散的微波极缓慢明暗（±10% 不透明度），
+      // 与小球的常驻水波同相位 —— 整个画布读作同一片缓缓起伏的水面。
+      // 相位已按格预计算，这里只剩一次查表 + 一次 sin。
+      ctx.globalAlpha = 0.80 + 0.20 * (0.5 + 0.5 * Math.sin(breathPhase[idx] - tW));
+      ctx.drawImage(spr.canvas, x - s / 2, y - s / 2, s, s);
+      ctx.globalAlpha = 1;
 
-      // 触发提亮：近核高光紧贴音点（外层弥散晕统一放在网格之后单独绘制，避免被邻点压住）
-      if (glow > 0.002) {
+      // 触发提亮：近核高光紧贴音点（外层弥散晕统一放在网格之后单独绘制，避免被邻点压住）。
+      // 阈值取 0.02：更低强度的泛光肉眼不可辨（贡献 <1.5% 亮度），却要付出一次渐变绘制 —— 直接跳过。
+      if (glow > 0.02) {
+        const tone = pitchTone(midi);
+        const rr = G.r * sc;
         const gm = ctx.createRadialGradient(x, y - rr * 0.25, 0, x, y, rr * 1.35);
         gm.addColorStop(0, `hsla(${tone.h},${Math.min(42, tone.s + 18)}%,${Math.min(97, tone.l + 42)}%,${(glow * 0.70).toFixed(3)})`);
         gm.addColorStop(0.45, `hsla(${tone.h},${Math.min(36, tone.s + 12)}%,${Math.min(90, tone.l + 30)}%,${(glow * 0.30).toFixed(3)})`);
         gm.addColorStop(1, `hsla(${tone.h},${tone.s}%,${tone.l}%,0)`);
         ctx.fillStyle = gm;
         ctx.beginPath(); ctx.arc(x, y, rr * 1.35, 0, Math.PI * 2); ctx.fill();
-      }
-
-      // 音名：哑光暖白，随音高微微变化；点亮时明显提亮
-      if (G.r >= 7.2) {
-        const fs = Math.max(6, Math.min(10.5, G.r * 0.58));
-        ctx.font = `${fs}px -apple-system,"SF Pro Text","PingFang SC",sans-serif`;
-        ctx.fillStyle = muted
-          ? 'rgba(110,112,120,0.20)'
-          : `hsla(${tone.h},${Math.min(26, tone.s + 8)}%,${Math.min(98, tone.l + 34 + glow * 18)}%,${(0.42 + glow * 0.52).toFixed(3)})`;
-        ctx.fillText(midiName(midi), x, y + 0.6);
+        // 音名提亮层：静止音名已烘焙在 sprite 里，只有点亮时才补画这一层
+        if (showLabel) {
+          ctx.font = labelFont;
+          ctx.fillStyle = `hsla(${tone.h},${Math.min(26, tone.s + 8)}%,${Math.min(98, tone.l + 34 + glow * 18)}%,${(0.42 + glow * 0.52).toFixed(3)})`;
+          ctx.fillText(midiName(midi), x, y + 0.6);
+        }
       }
     }
   }
@@ -1362,16 +1882,28 @@ function draw() {
   // ---- 外层弥散晕（"晕开"主体）：在所有音点之上叠加，边界极柔、远远化开 ----
   // 用加法混合，使亮起处自然发亮并向外渗透，像暗室里点亮的灯向四周晕开。
   if (glowOf.size) {
+    // 弥散晕是整帧最贵的一项：每个亮斑的填充面积可达 200×200 像素（远大于音点本体）。
+    // 这里做两件事：① 半径系数略微收紧；② 只画最亮的若干个 —— 弱斑的亮度贡献本就 <3%，
+    // 却要付出同等的填充代价。两者合计把这一层的像素量砍掉约六成，观感几乎不变。
     ctx.globalCompositeOperation = 'lighter';
+    bloomPk.length = 0;
     for (const [key, glow] of glowOf) {
-      if (glow <= 0.004) continue;
-      const [cs, rs] = key.split(',');
-      const i = +cs, j = +rs;
-      if (walls.has(wKey(i, j))) continue;              // 闭音点不点亮
+      if (glow <= 0.035) continue;                      // 极弱泛光不可辨，跳过
+      if (wallFlags[key]) continue;                     // 闭音点不点亮
+      bloomPk.push((Math.round(glow * 4095) << 14) | key);   // 打包：高位=强度，低位=格号
+    }
+    if (bloomPk.length > MAX_BLOOM) {
+      bloomPk.sort((a, b) => b - a);                    // 强的在前
+      bloomPk.length = MAX_BLOOM;
+    }
+    for (const pk of bloomPk) {
+      const key = pk & 16383;
+      const glow = (pk >>> 14) / 4095;
+      const j = (key / COLS) | 0, i = key - j * COLS;
       const tone = pitchTone(pitchOf[j][i]);
       const x = G.cx(i), y = G.cy(j);
       const rr = G.r * (1 + glow * 0.14);
-      const bloomR = rr * (2.8 + glow * 2.0);           // 峰值可晕到 ~4.8× 格径，弥散更开
+      const bloomR = rr * (2.3 + glow * 1.6);           // 峰值可晕到 ~3.9× 格径，弥散更开
       const bm = ctx.createRadialGradient(x, y, rr * 0.45, x, y, bloomR);
       bm.addColorStop(0,    `hsla(${tone.h},${Math.min(40, tone.s + 16)}%,${Math.min(86, tone.l + 24)}%,${(glow * 0.26).toFixed(3)})`);
       bm.addColorStop(0.32, `hsla(${tone.h},${Math.min(34, tone.s + 10)}%,${Math.min(76, tone.l + 14)}%,${(glow * 0.15).toFixed(3)})`);
@@ -1422,25 +1954,22 @@ function draw() {
   }
 
   // 声部：柔光而不刺眼，色相对齐同一雅致体系（6 色，供最多 6 个声部各不相同）
-  const BALL_TONES = [
-    { h:204, s:38, l:62 },   // 灰青
-    { h:38,  s:46, l:66 },   // 香槟金
-    { h:288, s:26, l:64 },   // 藕紫
-    { h:172, s:30, l:58 },   // 雾松
-    { h:18,  s:36, l:62 },   // 陶土
-    { h:142, s:26, l:60 },   // 苔绿
-  ];
+  // BALL_TONES 已提升为全局常量（底部声部 UI 也用同一套颜色），见 voiceCfg 附近定义
   ctx.globalCompositeOperation = 'lighter';
-  for (const b of balls) {
-    const px = b.x;
-    const py = b.y;
+  // 水波位移每球每帧只算一次：发光层与实体层共用同一份坐标（既省一半计算，也保证两层绝对同心）
+  const bp = [];
+  for (const b of balls) bp.push(ballDrawPos(b));
+  for (let bi = 0; bi < balls.length; bi++) {
+    const b = balls[bi];
+    const px = bp[bi].x;
+    const py = bp[bi].y;
     const T = BALL_TONES[b.toneIdx % BALL_TONES.length];
     const rr = G.r * 0.50;
     // ---- 外发光（持续存在）：柔和的同色光晕包裹小球，触发/碰撞时增强 ----
     const flash = Math.max(0, b.flash);
     const bump = Math.max(0, b.bump);
     const lit = Math.max(flash, bump);                   // 触发或碰撞都算"被点亮"
-    const glowR = rr * (3.0 + lit * 3.2);                // 峰值可扩到 ~6.2× 球径
+    const glowR = rr * (2.4 + lit * 2.6);                // 峰值可扩到 ~5× 球径
     const glowA = 0.16 + lit * 0.42;                     // 静息即有柔和外发光
     const halo = ctx.createRadialGradient(px, py, rr * 0.35, px, py, glowR);
     halo.addColorStop(0,    `hsla(${T.h},${T.s}%,${Math.min(88, T.l + 14)}%,${(glowA * 0.9).toFixed(3)})`);
@@ -1471,9 +2000,10 @@ function draw() {
     }
   }
   ctx.globalCompositeOperation = 'source-over';
-  for (const b of balls) {
-    const px = b.x;
-    const py = b.y;
+  for (let bi = 0; bi < balls.length; bi++) {
+    const b = balls[bi];
+    const px = bp[bi].x;                                 // 与发光层用同一套水波位移，保证同心
+    const py = bp[bi].y;
     const T = BALL_TONES[b.toneIdx % BALL_TONES.length];
     const rr = G.r * 0.50;                                  // 稍小一点（原 0.58）
     const lit = Math.max(Math.max(0, b.flash), Math.max(0, b.bump));
@@ -1510,8 +2040,9 @@ function cellFromEvent(e) {
 function applyPaint(cell, mode) {
   const k = wKey(cell.c, cell.r);
   const muted = walls.has(k);
-  if (mode === 'mute' && !muted) { walls.add(k); return true; }
-  if (mode === 'unmute' && muted) { walls.delete(k); return true; }
+  // 同步维护加速表（增量，避免整表重建）
+  if (mode === 'mute' && !muted) { walls.add(k); wallFlags[k] = 1; return true; }
+  if (mode === 'unmute' && muted) { walls.delete(k); wallFlags[k] = 0; return true; }
   return false;
 }
 cv.addEventListener('pointerdown', e => {
@@ -1544,6 +2075,56 @@ function flashCell(cell) {
 }
 
 // ---- UI ----
+// 「声部」网格：6 个声部，每个 = 序号圆点 + 音高 + 速度。
+//   圆点：激活 = 该声部小球的专属色、未激活 = 灰色。点击切换该声部自身的激活状态（点 3 只影响 3）。
+//   音高：点击在 低→中→高 间循环（一个八度偏移）。
+//   速度：点击在 1/16→1/8→1/4 间循环（每 X 分音符移动一格，数字越小越慢）。
+const VOICE_REGS = ['low', 'mid', 'high'];
+const VOICE_REG_TXT = { low: '低', mid: '中', high: '高' };
+const VOICE_DIVS = [16, 8, 4];                     // 循环顺序：1/16 → 1/8 → 1/4
+const VOICE_DIV_TXT = { 4: '1/4', 8: '1/8', 16: '1/16' };
+function renderVoices() {
+  const grid = document.getElementById('voiceGrid');
+  if (!grid) return;
+  let html = '';
+  for (let i = 0; i < VOICE_N; i++) {
+    const cfg = voiceCfg[i];
+    const on = cfg.active;
+    const T = ballTone(i);                           // 该声部小球色 → 整组 UI 的着色变量
+    const toneStyle = `--vh:${T.h};--vs:${T.s}%;--vl:${T.l}%`;
+    html += `<div class="voice${on ? ' on' : ''}" style="${toneStyle}">`
+      + `<button class="vc" data-i="${i}" title="${on ? '声部 ' + (i + 1) + '（已激活，点击关闭）' : '点击激活声部 ' + (i + 1)}">${i + 1}</button>`
+      + `<button class="vbtn" data-i="${i}" data-act="reg" title="音高：低/中/高（整体升降一个八度）${on ? '，点击切换' : '，点击可直接激活声部并设置'}"><b>${VOICE_REG_TXT[cfg.reg]}</b></button>`
+      + `<button class="vbtn" data-i="${i}" data-act="div" title="速度：每 X 分音符移动一格，1/16 为默认${on ? '，点击切换' : '，点击可直接激活声部并设置'}"><b>${VOICE_DIV_TXT[cfg.div] || '1/16'}</b></button>`
+      + `</div>`;
+  }
+  grid.innerHTML = html;
+}
+document.getElementById('voiceGrid').addEventListener('click', e => {
+  const vc = e.target.closest('.vc');
+  if (vc) {                                            // 点圆点 → 单独切换该声部的激活状态
+    const i = +vc.dataset.i;
+    voiceCfg[i].active = !voiceCfg[i].active;
+    syncBalls();
+    return;
+  }
+  const vb = e.target.closest('.vbtn');
+  if (!vb) return;
+  const slot = +vb.dataset.i;
+  const cfg = voiceCfg[slot];
+  if (!cfg) return;
+  // 未激活的声部：点音高/速度 = 顺带把它激活（关闭只能点圆点，避免误关）
+  if (!cfg.active) cfg.active = true;
+  if (vb.dataset.act === 'reg') {                      // 音高循环：低→中→高→低
+    cfg.reg = VOICE_REGS[(VOICE_REGS.indexOf(cfg.reg) + 1) % VOICE_REGS.length];
+  } else {                                             // 速度循环：1/16→1/8→1/4→1/16
+    cfg.div = VOICE_DIVS[(VOICE_DIVS.indexOf(cfg.div || 16) + 1) % VOICE_DIVS.length];
+  }
+  syncBalls();                                         // 激活/配置变化 → 同步小球（新球会取用 cfg 的值）
+  const b = balls.find(x => x.slot === slot);
+  if (b) b.flash = 1;                                  // 闪一下给出即时反馈
+  renderVoices();
+});
 document.querySelectorAll('.chiprow').forEach(row => {
   row.addEventListener('click', e => {
     const btn = e.target.closest('.chip'); if (!btn) return;
@@ -1553,7 +2134,6 @@ document.querySelectorAll('.chiprow').forEach(row => {
     if (k === 'scale') { state.scale = v; rebuildPitches(true); }
     if (k === 'timbre') state.timbre = v;
     if (k === 'mode') { state.mode = v; resetBallMotion(); }
-    if (k === 'balls') { state.ballCount = +v; syncBalls(); }
     if (k === 'density') { applyDensity(v); }
   });
 });
@@ -1572,16 +2152,31 @@ playBtn.addEventListener('click', async () => {
   else stepIndex = 0;               // 暂停：重置格点序号，下次起播从第 0 拍开始
   playBtn.textContent = playing ? '❚❚' : '▶';
   playBtn.classList.toggle('on', playing);
+  if (playing) resumeLoop();          // 若此前因页面不可见停了主循环，这里立刻恢复
 });
 
 document.getElementById('shuffleBtn').addEventListener('click', shuffleAll);
 document.getElementById('autoBtn').addEventListener('click', () => setAutoVariation(!autoVariation));
+document.getElementById('voiceAutoBtn').addEventListener('click', () => setVoiceAuto(!voiceAuto));
 
 // ---- boot ----
+// 画布尺寸同步。注意：canvas 的 CSS 尺寸永远是舞台的 100%（position:absolute;inset:0），
+// 因此内部坐标系 W/H 一旦与 CSS 尺寸不一致，浏览器就会非等比缩放位图 —— 正圆被压成椭圆。
+// 所以这里以"舞台实际像素"为唯一依据，并在尺寸未变化时提前返回（避免 ResizeObserver 回环）。
+let _lastW = -1, _lastH = -1;
 function resize() {
   const stage = document.getElementById('stage');
-  W = stage.clientWidth; H = stage.clientHeight;
-  cv.width = W * DPR; cv.height = H * DPR;
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const changed = (w !== _lastW || h !== _lastH);
+  _lastW = w; _lastH = h;
+  W = w; H = h;
+  // DPR 可能随系统缩放/浏览器缩放变化，跟随刷新；变化时清掉按旧 DPR 预渲染的点精灵
+  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  if (dpr !== DPR) { DPR = dpr; clearSpriteCache(); }
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  if (!changed) return;                               // 尺寸没变 → 无需重算网格/音级
+  // 舞台尺寸一变，格径就可能变 → 音点精灵是按固定基准半径预渲染的，必须整批重做
+  clearSpriteCache();
   // 舞台尺寸变化 → 重新推算行列数（保持目标格径与统一间距）
   const oc = COLS, or_ = ROWS;
   computeGrid();
@@ -1591,6 +2186,7 @@ function resize() {
     } else {
       walls.clear();
       rebuildPitches(false);
+      syncWallFlags();
     }
     rebuildPitches(true);
     clearSpriteCache();
@@ -1605,13 +2201,39 @@ function resize() {
   syncBalls();
 }
 window.addEventListener('resize', resize);
+// 页面切到后台且未播放时，直接停掉主循环（看不见的画面没必要继续计算，省电）；
+// 播放中不停 —— 音频调度依赖这个循环，停了音乐就会断。
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (!playing && rafId) { cancelAnimationFrame(rafId); rafId = 0; loopPaused = true; }
+  } else if (loopPaused) {
+    resumeLoop();
+  }
+});
+// 关键补充：舞台高度会随下方选项区高度变化（声部网格换行、字体载入、系统栏收缩…），
+// 这些都不会触发 window.resize，必须用 ResizeObserver 才能及时同步画布，否则圆会被拉成椭圆。
+if (typeof ResizeObserver !== 'undefined') {
+  let _roRaf = 0;
+  const ro = new ResizeObserver(() => {
+    if (_roRaf) return;
+    _roRaf = requestAnimationFrame(() => { _roRaf = 0; resize(); });
+  });
+  ro.observe(document.getElementById('stage'));
+}
 computeGrid();
 rebuildPitches();
 resize();
 updateField();
 // 首次加载即呈现"变奏"状态：重排音级 + 生成闭音矩阵
 shuffleAll();
-requestAnimationFrame(frame);
+// 字体/图标载入后布局可能微调，再校准一次尺寸
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    clearSpriteCache();                 // 音名已烘焙进音点精灵 —— 字体就绪后必须重渲一次
+    setTimeout(resize, 60);
+  });
+}
+rafId = requestAnimationFrame(frame);
 </script>
 </body>
 </html>
