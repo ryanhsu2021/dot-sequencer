@@ -249,8 +249,7 @@
         <button class="chip" data-v="tri" title="黄金三角线：沿顶角 36° 的黄金三角形三边匀速环绕">三角</button>
       </div></div>
       <!-- 每个声部（小球）独立配置：点圆点切换该声部自身的激活状态；
-           点「音高」在 低→中→高 间循环（决定该声部「走格时」发声的音区；
-           小球互撞 / 撞到画布边缘时的撞击声一律取「高」音区，比走格高一个八度），
+           点「音高」在 低→中→高 间循环（决定该声部发声的音区），
            点「速度」在 1/16→1/8→1/4 间循环（每 X 分音符移动一格，1/16 最快） -->
       <div class="opt"><span>声部</span><div id="voiceGrid"></div></div>
       <div class="opt"><span>密度</span><div class="chiprow" data-key="density">
@@ -673,9 +672,7 @@ const ballTone = slot => BALL_TONES[slot % BALL_TONES.length];
 //   声部2 低音 1/8  → 低音线（慢一半，稳住和声根基）
 //   声部3 高音 1/4  → 高音点缀（最稀疏，闪亮的高光）
 // 两个维度共同拉开层次：音区（低/中/高）决定"音在哪"，速度（1/16、1/8、1/4）
-// 决定"球多快" —— 跑得越快，走格与撞击越勤，音符自然越密。
-// 撞击声不参与这个分层：它固定取「高」音区（见 triggerNote），
-// 于是每一次互撞/撞边都会从当前乐句里跳出一个清亮的高音。
+// 决定"球多快" —— 跑得越快，换格越勤，音符自然越密。
 const DEFAULT_VOICE_CFG = [
   { active: true,  reg: 'mid',  div: 16 },   // 声部1 中 1/16
   { active: true,  reg: 'low',  div: 8  },   // 声部2 低 1/8
@@ -688,11 +685,10 @@ let voiceCfg = DEFAULT_VOICE_CFG.map(c => ({ ...c }));
 let balls = [];
 const REG_OFF = { low: -12, mid: 0, high: 12 };    // 音区 → 半音偏移（一个八度）
 const ballSpdFactor = b => (b.div || 16) / 16;     // 速度倍率：1/16→1.0、1/8→0.5、1/4→0.25
-// 位移换算系数（px / 单位速度 / 秒）。音符密度与球速挂钩：球跑得越快 →
-// 换格越勤（移动发声）→ 撞墙/互撞也越勤（撞击发声），音符整体越密。
+// 位移换算系数（px / 单位速度 / 秒）。音符密度与球速挂钩：球跑得越快 → 换格越勤，音符整体越密。
 const MOVE_SCALE = 300;                             // 基准球速：BASE_BPM 下的设计值
 // 「速度」滑杆的语义 = 整台乐器的快慢。所以球速必须随 BPM 等比缩放：
-// BPM ×2 → 球跑快一倍 → 走格与撞击都翻倍 → 旋律密度与节奏网格同步变密。
+// BPM ×2 → 球跑快一倍 → 换格翻倍 → 旋律密度与节奏网格同步变密。
 // 基准固定为 96 BPM —— 它是"设计速度"的参考点（MOVE_SCALE 的标定用），
 // 不随出厂默认值变动，这样此前实测过的 BPM↔球速映射表始终成立：
 //   60 → 0.63×  96 → 1.0×  180 → 1.88×
@@ -721,8 +717,6 @@ function makeBall(slot, n, idx) {
     div: cfg.div,                              // 移动速度：每 X 分音符一格
     flash: 0,
     bump: 0,                                   // 碰撞闪光（1→0 衰减）
-    hitCd: 0,                                  // 撞击发声冷却：同一次接触不连击（秒）
-    edgeLatch: false,                          // 撞边闩锁：贴边只发一次声，离开边界后才可再次触发
     _moved: false,                             // 本拍是否发生格位变化（决定「移动发声」是否奏响）
     _pendingFlash: false,                      // 时钟已排好音、等帧到点触发视觉反馈
   };
@@ -938,10 +932,9 @@ function resetClock() {
   stepIndex = 0;
   barStartStep = 0;                        // 定时变奏的小节计数与格点对齐归零
 }
-// 每个 16 分音符格点的动作（第一套发声：琴格上的旋律）。
+// 每个 16 分音符格点的动作（唯一的发声通道：琴格上的旋律）。
 // 只有「本拍相对上一拍发生了格位变化」的声部才发声 —— 音符严格落在 1/16 格点上
 // （节奏稳定），又保留了"移动才算一个音"的旋律呼吸，避免每拍所有声部齐鸣成噪音墙。
-// 第二套发声（撞击）不在这里：小球互撞 / 撞到画布边缘时即时发声，见 triggerNote。
 function onSixteenthStep(when) {
   for (const b of balls) {
     const m0 = pitchOf[b.row]?.[b.col];
@@ -1103,7 +1096,6 @@ function stepBall(b, dt) {
   // 这里改为：维护一个"目标航向角"，让实际航向以很低的速度平滑转向它；
   // 只有当航向接近目标时才换一个新目标 → 方向变化连续，观感平滑。
   // 边界处理：不再提前转向回避，而是让球**真正撞到画布边缘**后按镜面反射弹回
-  // —— 这次撞击本身就是一次发声事件（见 checkEdgeImpact）。
   if (b.heading == null) { b.heading = Math.atan2(b.vy, b.vx) || 0; b.headTarget = b.heading; b.spd = Math.hypot(b.vx, b.vy) || 0.35; }
   // 航向与目标的夹角
   let diff = b.headTarget - b.heading;
@@ -1227,8 +1219,6 @@ function resetBallMotion() {
     b.circle = null;
     b.tri = null;
     b._dirSet = false;
-    b.edgeLatch = false;                                // 撞边闩锁复位（换轨迹后重新计）
-    b.hitCd = 0;                                        // 撞击发声冷却清零，不在新轨迹上残留
     if (state.mode === 'circle') initCircle(b);
     if (state.mode === 'tri') initTri(b);
     if (state.mode === 'line') {
@@ -1243,7 +1233,7 @@ function resetBallMotion() {
   }
 }
 
-// ---- 声部之间的碰撞：两球接触时互相推开（完全分离），各自变换轨迹，并双双发声 ----
+// ---- 声部之间的碰撞：两球接触时互相推开（完全分离），各自变换轨迹 ----
 // 每种轨迹模式用不同方式响应碰撞，读起来像"互相弹开"：
 //   布朗 → 把航向目标转向远离对方的方向 + 短暂加速（自然弹开）
 //   直线 → 碰撞后随机换成 45°/90° 方向（各 50%）
@@ -1278,13 +1268,9 @@ function collideBalls() {
         a.x -= nx * push; a.y -= ny * push;
         b.x += nx * push; b.y += ny * push;
         moved = true;
-        if (it === 0) {                                 // 轨迹变换、闪光与发声只在首次接触时触发一次
+        if (it === 0) {                                 // 轨迹变换与闪光只在首次接触时触发一次
           reactCollision(a, b, nx, ny);
           a.bump = 1; b.bump = 1;
-          // 两球各自按「当前所在音点」发声（音区固定为高，见 triggerNote）——
-          // 与「走格发声」叠加，让互撞在旋律之上多出一记清脆的高音
-          triggerNote(a, 0.66 + Math.random() * 0.26);
-          triggerNote(b, 0.66 + Math.random() * 0.26);
         }
       }
     }
@@ -1533,8 +1519,7 @@ const bloomPk = [];                                  // 打包数组，复用避
 const ballPosBuf = [];                               // 小球水波坐标复用缓冲（避免每帧新建数组）
 
 // ---- 一次发声的视觉回声：闪动 + 该音点涟漪 + 能量晕染 + 偶发水波 ----
-// 「移动发声」（格点调度）与「撞击发声」（碰撞/撞边）共用这一段，
-// 保证两种来源的声音在画面上都读作同一个动作：音点亮起 + 一圈涟漪自该格荡开。
+// 每次「移动发声」（格点调度）奏响时调用，读作一个动作：音点亮起 + 一圈涟漪自该格荡开。
 function noteVisual(b, midi) {
   b.flash = 1;
   spawnRipple(b.col, b.row, pitchTone(midi));        // 该音点扩散一圈音高色涟漪
@@ -1549,42 +1534,6 @@ function noteVisual(b, midi) {
   const t = Math.max(0, Math.min(1, (midi - ROOT_BASE) / 30));
   ambient.level = Math.min(1, ambient.level + 0.30 + t * 0.22);
   ambient.hue = t;
-}
-
-// ---- 撞击发声：小球互撞 / 撞到画布边缘时即时奏响（叠加在「移动发声」之上）----
-// 音高同样取自小球**当前所在音点**，但音区固定为「高」—— 同一个音点，
-// 撞击时比走格时高一个八度：清亮、有击打感，听感上立刻把"撞到了"和"走过了"分开。
-// 上限 HIT_MIDI_MAX 兜住音域顶部（密集网格时最高几行音点本就极高，再 +12 会刺耳）。
-// 「闭音」音点依旧是静默的：球可以从上面经过，只是不发声。
-const MIN_HIT_GAP = 0.085;                           // 同一球两次撞击发声的最小间隔（秒），防止同一次接触连击
-const HIT_MIDI_MAX = 96;                             // 撞击声上限（C7）：够亮，又不至于扎耳
-function triggerNote(b, vel) {
-  if (b.hitCd > 0) return;                           // 冷却中
-  const prow = pitchOf[b.row];
-  const p = prow ? prow[b.col] : null;
-  if (p == null) return;                             // 网格尚未就绪（防御）
-  if (wallFlags[b.row * COLS + b.col]) return;       // 闭音点不发声
-  b.hitCd = MIN_HIT_GAP;
-  const midi = Math.min(HIT_MIDI_MAX, p + REG_OFF.high);
-  playNote(midi, vel, 0);
-  noteVisual(b, midi);                               // 与该次撞击同时刻的视觉反馈
-}
-// 撞到画布边缘的检测：位置贴到 FIELD 边界即算一次撞击。
-// 用「闩锁」而不是直接判定 —— 球可能沿边滑行或在角落停留若干帧，
-// 只有离开边界足够远（EDGE_REL）之后才允许下一次触发，一次贴边只响一声。
-const EDGE_EPS = 1.6, EDGE_REL = 7;
-function checkEdgeImpact(b) {
-  const F = FIELD;
-  const d = Math.min(b.x - F.x0, F.x1 - b.x, b.y - F.y0, F.y1 - b.y);
-  if (d <= EDGE_EPS) {
-    if (!b.edgeLatch) {
-      b.edgeLatch = true;
-      b.bump = 1;                                    // 一圈冲击闪光，读作"撞墙了"
-      triggerNote(b, 0.55 + Math.random() * 0.24);
-    }
-  } else if (d > EDGE_REL) {
-    b.edgeLatch = false;
-  }
 }
 
 // ---- loop ----
@@ -1630,10 +1579,10 @@ function frame(ts) {
     }
   }
 
-  // 音乐时钟：只推进格点计数（定时变奏 / 圆周呼吸用它计时；发声不再挂在这里）
+  // 音乐时钟：推进格点计数（定时变奏 / 圆周呼吸用它计时），并在格点上调度发声
   pumpClock();
 
-  // 所有轨迹模式均为逐帧平滑运动（「移动发声」由时钟量化，「撞击发声」即时触发）
+  // 所有轨迹模式均为逐帧平滑运动（发声由时钟在 1/16 格点上量化）
   for (const b of balls) {
     if (playing) stepBall(b, dt);
     // 视觉反馈：时钟在本帧前已调度该声部的移动发声 → 触发闪动/涟漪（与音频同时刻）
@@ -1644,13 +1593,9 @@ function frame(ts) {
     }
     if (b.flash > 0) b.flash -= dt * 2.6;
     if (b.bump > 0) b.bump -= dt * 2.2;                 // 碰撞闪光衰减
-    if (b.hitCd > 0) b.hitCd -= dt;                     // 撞击发声冷却
   }
-  // 声部之间的碰撞：互相推开 + 变换轨迹 + 双双发声；再统一检测撞边
-  if (playing) {
-    collideBalls();
-    for (const b of balls) checkEdgeImpact(b);
-  }
+  // 声部之间的碰撞：互相推开 + 变换轨迹（纯视觉，不发声）
+  if (playing) collideBalls();
   updateRipples(dt);
   updateWater(dt);
   updateDotEnergy(dt);
@@ -2234,7 +2179,7 @@ document.getElementById('autoBtn').addEventListener('click', () => setAutoVariat
 // 保存内容 = 全部「可调项」+ 当前变奏本身（音级布局与闭音分布），所以重新打开时
 // 听到/看到的还是离开前那一段，而不是每次都被重置成出厂编排。
 // 只存设置，不存播放态：浏览器策略不允许页面自动起播，音乐仍需手动点播放。
-// v3：发声回到「移动发声 + 撞击发声」双层，声部默认音高恢复「低/中/高」分层。
+// v3：声部默认音高为「低/中/高」分层（发声 = 移动换格时在该音区奏响）。
 const SESSION_KEY = 'dotseq.session.v3';
 // v2 存档迁移：上一版声部音高只有一个默认值「高」（并非用户手调），
 // 直接读回来会让三个声部挤在高音区、失去层次。所以迁移时只补这一项 ——
