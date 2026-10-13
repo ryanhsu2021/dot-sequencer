@@ -686,7 +686,12 @@ const REG_OFF = { low: -12, mid: 0, high: 12 };    // 音区 → 半音偏移（
 const ballSpdFactor = b => (b.div || 16) / 16;     // 速度倍率：1/16→1.0、1/8→0.5、1/4→0.25
 // 位移换算系数（px / 单位速度 / 秒）。音符密度与球速挂钩：球跑得越快 →
 // 换格越勤（移动发声）→ 撞墙/互撞也越勤（撞击发声），音符整体越密。
-const MOVE_SCALE = 300;
+const MOVE_SCALE = 300;                             // 基准球速：BASE_BPM 下的设计值
+// 「速度」滑杆的语义 = 整台乐器的快慢。所以球速必须随 BPM 等比缩放：
+// BPM ×2 → 球跑快一倍 → 走格与撞击都翻倍 → 旋律密度与节奏网格同步变密。
+// 基准取出厂默认 96 BPM，保证默认状态下观感/听感与之前完全一致。
+const BASE_BPM = 96;
+const bpmScale = () => state.bpm / BASE_BPM;
 function makeBall(slot, n, idx) {
   const cfg = voiceCfg[slot] || { reg: 'mid', div: 16 };
   // 沿网格中心列均匀分布，纵向错开（闭音点也可出生，仅不发声而已）
@@ -999,7 +1004,7 @@ function stepBall(b, dt) {
     T.cx = Math.min(F.x1 - T.R, Math.max(F.x0 + T.R, T.cx));
     T.cy = Math.min(F.y1 - T.R, Math.max(F.y0 + T.R, T.cy));
     T.rot += T.spin * dt;                               // 三角自转（缓缓转动）
-    T.u += T.spd * ballSpdFactor(b) * dt * T.sgn;       // 沿回路推进（受该声部速度档位缩放）
+    T.u += T.spd * ballSpdFactor(b) * bpmScale() * dt * T.sgn;   // 沿回路推进（声部速度档位 × BPM）
     T.u = (T.u % 3 + 3) % 3;                            // 回绕到 [0,3)：3 条边合为一圈
     const seg = Math.floor(T.u), f = T.u - seg;         // 所在边 + 边内进度
     const A = triVert(T, seg), B = triVert(T, (seg + 1) % 3);
@@ -1014,7 +1019,7 @@ function stepBall(b, dt) {
   if (state.mode === 'circle') {
     if (b.circle == null) initCircle(b);
     const c = b.circle;
-    c.phase += c.speed * ballSpdFactor(b) * dt;         // 匀速推进角相位（受该声部速度档位缩放）
+    c.phase += c.speed * ballSpdFactor(b) * bpmScale() * dt;    // 匀速推进角相位（声部速度档位 × BPM）
     // 半径呼吸：以音乐时间（1/16 拍点序号）为基准，每 2 个 BAR（=32 个 16 分音符）为一个周期，
     // 周期开始抽一个随机目标半径，用 smoothstep 在整个周期内平滑逼近 → 与节拍同步的柔和律动。
     // 暂未播放时（stepIndex 不推进）退回帧时间驱动，保证静态预览下也有呼吸。
@@ -1053,7 +1058,7 @@ function stepBall(b, dt) {
   // ---- 直线：45°/90° 随机方向的匀速直线运动，撞到边缘即换向 ----
   if (state.mode === 'line') {
     if (!b._dirSet) { pickLineDir(b); b._dirSet = true; }
-    const speed = 0.5 * ballSpdFactor(b);              // 直线速度（受该声部速度档位缩放）
+    const speed = 0.5 * ballSpdFactor(b) * bpmScale();  // 直线速度（声部速度档位 × BPM）
     // 方向归一化：45° 对角方向的模长为 √2，不归一化会导致对角比正交快 41%，
     // 使「速度」档位失真。这里除以模长，保证任何方向速度一致。
     const nrm = 1 / (Math.hypot(b.dirX, b.dirY) || 1);
@@ -1083,11 +1088,14 @@ function stepBall(b, dt) {
   let diff = b.headTarget - b.heading;
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
-  // 平滑转向：转向速度随 dt 线性施加（与帧率无关），保持匀速感
-  const TURN_RATE = 0.55;                               // 弧度/秒（越小越顺滑、越慢）
+  // 平滑转向：转向速度随 dt 线性施加（与帧率无关），保持匀速感。
+  // 转向速率同时随 BPM 缩放 —— 曲率半径 = 速度 / 转向速率，两者等比才能"只提速、不变形"，
+  // 否则高 BPM 下球速上去了而转向没跟上，布朗轨迹会被拉成近乎直线。
+  const TURN_RATE = 0.55;                               // 弧度/秒（基准 BPM 下；越小越顺滑、越慢）
+  const bpmK = bpmScale();
   // 碰撞后的短时间内提高转向速率（bumpTurn>0），让弹开干脆、但依然平滑
-  let rate = TURN_RATE;
-  if (b.bumpTurn > 0) { rate = 2.6; b.bumpTurn -= dt; }
+  let rate = TURN_RATE * bpmK;
+  if (b.bumpTurn > 0) { rate = 2.6 * bpmK; b.bumpTurn -= dt; }
   const maxTurn = rate * dt;
   if (Math.abs(diff) <= maxTurn) {
     b.heading = b.headTarget;
@@ -1104,7 +1112,7 @@ function stepBall(b, dt) {
   b.vx = Math.cos(b.heading) * b.spd;
   b.vy = Math.sin(b.heading) * b.spd;
 
-  const sf = ballSpdFactor(b);                          // 该声部的速度倍率
+  const sf = ballSpdFactor(b) * bpmScale();             // 该声部速度倍率 × BPM 缩放
   let nx = b.x + b.vx * dt * MOVE_SCALE * sf;
   let ny = b.y + b.vy * dt * MOVE_SCALE * sf;
   // 撞到画布边缘 → 镜面反射（翻转"朝向墙内"的那个速度分量）。
