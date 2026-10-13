@@ -264,11 +264,15 @@
 
 <script>
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-let W, H, DPR = Math.min(devicePixelRatio || 1, 1.75);
 // DPR 上限 1.75（而非 2）：主循环的开销几乎全部是画布像素填充（实测：隐藏画布后主线程
 // 占用从 ~99% 掉到 ~9%，其余都是 CSS 层，可忽略），而填充量正比于 DPR²。
 // 1.75 相比 2 直接省掉约 23% 的像素，而本作画面全是柔和渐变、没有高频细节，
 // 在 2x/3x 屏上肉眼几乎看不出差别 —— 这是性价比最高的一处降载。
+// DPR_STEPS：自适应画质档位。手机若持续掉帧（主线程被画布吃满，音频线程被拖累出爆音），
+// 就自动往下一档退，只降不升 —— 宁可画面软一点，也不要声音裂。
+const DPR_STEPS = [1.75, 1.4, 1.15];
+let DPR_CAP = DPR_STEPS[0];
+let W, H, DPR = Math.min(devicePixelRatio || 1, DPR_CAP);
 
 // ---- grid（密度 = 目标圆点直径；行列数按舞台宽高自适应，保证撑满且间距一致） ----
 let COLS = 11, ROWS = 20;
@@ -747,11 +751,16 @@ function syncBalls() {
 // 固定效果链：干声 → 压缩/限幅 → 输出；同时并联「HALL 混响」与「节奏延迟」两条湿声支路。
 // 不暴露任何选项，整体始终带一层大厅混响（Hall）+ 与 BPM 同步的延迟，使音色更饱满润泽。
 let AC = null, master, comp, softClip;
-let dryBus, wetReverbIn, convolver, reverbGain, wetDelayIn, delayNode, feedback, delayGain;
+let dryBus, toneBus, wetReverbIn, convolver, reverbGain, wetDelayIn, delayNode, feedback, delayGain;
 
 function initAudio() {
   if (AC) return;
-  AC = new (window.AudioContext || window.webkitAudioContext)();
+  // latencyHint='playback'：向系统要一块"较大的音频缓冲"。
+  // 默认的 interactive 会要一块很小的缓冲（Android 上常只有 ~10ms），音频线程稍被抢
+  // 就会来不及填样本 → 输出出现"啪啪/咔咔"的爆裂断续。本作是纯播放型的生成音乐，
+  // 不存在"按键到出声"的延迟诉求，所以换大缓冲是零代价的（实测桌面 baseLatency 0.01→0.02，
+  // 手机上换来的余量则大得多）。
+  AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
 
   // 总线：干湿汇总 → 轻压缩（避免叠音削顶）→ 输出
   // 氛围向改动后：释放段更长 + 混响/延迟湿声量更大 → 总线能量明显上升，
@@ -768,11 +777,21 @@ function initAudio() {
     const x = (i / (_N - 1)) * 2 - 1;
     _c[i] = 0.92 * Math.tanh(x / 0.92);
   }
-  softClip.curve = _c; softClip.oversample = '4x';
+  // oversample 用 'none'：实测本作输出峰值约 0.7（远未到饱和段），tanh 在这段近乎线性，
+  // 4x 过采样的收益基本为零，却要让削波节点按 4 倍速率运算 —— 在手机上这是白花的音频线程开销。
+  softClip.curve = _c; softClip.oversample = 'none';
   master.connect(comp); comp.connect(softClip); softClip.connect(AC.destination);
 
-  // 干声母线（所有音符先入此节点，再分别送往干/湿）
-  dryBus = AC.createGain(); dryBus.gain.value = 1; dryBus.connect(master);
+  // 干声母线：所有音符先汇入这里，再统一过一道「音色低通」，最后分发到干/湿支路。
+  // 这道低通原来挂在**每个音符**上（每次发声新建一个 BiquadFilter）。但它截止频率固定、
+  // 是线性滤波器，与音符的包络增益可以交换顺序 —— filter(env·x) ≡ env·filter(x)。
+  // 提到母线上只留一个，音色一字不差，而每次发声少建/少连一个节点：
+  // 手机上每少一次图变更，音频线程就少一次锁等待，这正是爆裂断续的诱因之一。
+  dryBus = AC.createGain(); dryBus.gain.value = 1;
+  toneBus = AC.createBiquadFilter();
+  toneBus.type = 'lowpass'; toneBus.Q.value = 0.5; toneBus.frequency.value = 6200;
+  dryBus.connect(toneBus);
+  toneBus.connect(master);
 
   // ---- HALL 混响：用程序生成的脉冲响应（衰减噪声）做卷积，得到大厅般的宽阔尾音 ----
   convolver = AC.createConvolver();
@@ -796,6 +815,9 @@ function initAudio() {
   delayNode.connect(delayGain); delayGain.connect(master);
   // 延迟也轻微送入混响，让回声融进大厅
   delayGain.connect(wetReverbIn);
+  // 干声（已过音色低通）各送一份到两条湿声支路 —— 等同于原来从每个音符的包络输出分出的两支
+  toneBus.connect(wetReverbIn);
+  toneBus.connect(wetDelayIn);
 }
 
 // 生成一段大厅混响脉冲响应：指数衰减的噪声，左右声道轻微去相关 → 更宽的空间感
@@ -830,20 +852,18 @@ function playNote(midi, vel = 1, when = 0) {
   // 让相邻音符的尾音互相搭接、融进混响与延迟，形成连绵的空气感而不是一颗颗音点。
   const beat = 60 / state.bpm;
   let dur = beat * 1.8;
-  // 统一的音色整形：先过一道柔和低通去掉硬边，再进包络与湿声支路
-  const tone = AC.createBiquadFilter();
-  tone.type = 'lowpass'; tone.Q.value = 0.5;
-
+  // 音色整形：截止频率设在共享的 toneBus 上（见 initAudio），这里只需按音色切换档位。
+  // 顺序上等价于「先滤后包络」—— 线性滤波器与增益可交换。
   if (state.timbre === 'pluck') {
     // 拨弦（保留原有性格）：清晰的三角波 + 一点锯齿泛音，起音利落；
     // 仅把释放段略微放长、并加一道高切让它不那么刺，其余保持原样。
     dur = beat * 1.8;
-    tone.frequency.value = 6200;
+    toneBus.frequency.value = 6200;
     o.type = 'triangle'; o.frequency.value = f;
     const o2 = AC.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = f;
-    const g2 = AC.createGain(); g2.gain.value = 0.20; o2.connect(g2); g2.connect(tone);
+    const g2 = AC.createGain(); g2.gain.value = 0.20; o2.connect(g2); g2.connect(g);
     o2.start(t); o2.stop(t + dur);
-    o.connect(tone);
+    o.connect(g);
     g.gain.setValueAtTime(0.46 * vel, t);
     // 先保持一小段再指数衰减：起音扎实、尾音绵长，听感更像连奏而非点状击弦
     g.gain.exponentialRampToValueAtTime(0.28 * vel, t + dur * 0.18);
@@ -852,15 +872,15 @@ function playNote(midi, vel = 1, when = 0) {
     // 雾铃（氛围化铃音）：双正弦叠出的清透音体 + 极轻的 FM 金属光泽，
     // 起音放缓，尾音拖到约 4 拍，泛音在混响里化成一片雾。
     dur = beat * 4.0;
-    tone.frequency.value = 4200;
+    toneBus.frequency.value = 4200;
     o.type = 'sine'; o.frequency.value = f * 2;
     const mod = AC.createOscillator(); mod.frequency.value = f * 3.01;
     const mg = AC.createGain(); mg.gain.value = f * 0.85;         // 调制指数降低 → 少了金属锐利，多了温润
     mod.connect(mg); mg.connect(o.frequency); mod.start(t); mod.stop(t + dur * 0.6);
     const o2 = AC.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2.004;
-    const g2 = AC.createGain(); g2.gain.value = 0.34; o2.connect(g2); g2.connect(tone);
+    const g2 = AC.createGain(); g2.gain.value = 0.34; o2.connect(g2); g2.connect(g);
     o2.start(t); o2.stop(t + dur);
-    o.connect(tone);
+    o.connect(g);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(0.25 * vel, t + 0.06);          // 柔起音
     g.gain.exponentialRampToValueAtTime(0.16 * vel, t + dur * 0.42);
@@ -869,14 +889,14 @@ function playNote(midi, vel = 1, when = 0) {
     // 云垫（氛围柔垫）：三个微失谐正弦叠成宽阔音团，慢起音、几乎不衰减，
     // 释放段最长（约 4.6 拍），像一层缓慢呼吸的和声雾。
     dur = beat * 4.6;
-    tone.frequency.value = 2600;
+    toneBus.frequency.value = 2600;
     o.type = 'sine'; o.frequency.value = f;
     const o2 = AC.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.006;
-    const g2 = AC.createGain(); g2.gain.value = 0.5; o2.connect(g2); g2.connect(tone);
+    const g2 = AC.createGain(); g2.gain.value = 0.5; o2.connect(g2); g2.connect(g);
     const o3 = AC.createOscillator(); o3.type = 'sine'; o3.frequency.value = f * 0.997;
-    const g3 = AC.createGain(); g3.gain.value = 0.38; o3.connect(g3); g3.connect(tone);
+    const g3 = AC.createGain(); g3.gain.value = 0.38; o3.connect(g3); g3.connect(g);
     o2.start(t); o2.stop(t + dur); o3.start(t); o3.stop(t + dur);
-    o.connect(tone);
+    o.connect(g);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(0.20 * vel, t + 0.22);          // 更慢的起音 → 云一样浮现
     g.gain.linearRampToValueAtTime(0.16 * vel, t + dur * 0.6);     // 长保持段（几乎不衰减）
@@ -885,23 +905,21 @@ function playNote(midi, vel = 1, when = 0) {
     // 深空低音（氛围化低音）：正弦基音 + 少量三角泛音定形，去掉原来的方波硬感；
     // 慢起音、长释放，低音线条像远处的地平线一样持续铺底。
     dur = beat * 3.8;
-    tone.frequency.value = 700;
+    toneBus.frequency.value = 700;
     o.type = 'sine'; o.frequency.value = f / 2;
     const o2 = AC.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f;
-    const g2 = AC.createGain(); g2.gain.value = 0.16; o2.connect(g2); g2.connect(tone);
+    const g2 = AC.createGain(); g2.gain.value = 0.16; o2.connect(g2); g2.connect(g);
     o2.start(t); o2.stop(t + dur);
-    o.connect(tone);
+    o.connect(g);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(0.29 * vel, t + 0.16);          // 柔起音
     g.gain.exponentialRampToValueAtTime(0.18 * vel, t + dur * 0.4);
     g.gain.exponentialRampToValueAtTime(0.0006, t + dur);          // 长释放
   }
-  tone.connect(g);                                    // 音色整形 → 包络 → 干/湿母线
-  o.connect(tone);
+  o.connect(g);                                       // 振荡器 → 包络 → 干声母线
   o.start(t); o.stop(t + dur + 0.05);
-  // 每次发声向混响/延迟支路各送一份（湿声量已由固定增益控制）
-  g.connect(wetReverbIn);
-  g.connect(wetDelayIn);
+  // 音色低通与湿声支路都挂在干声母线上（见 initAudio）：每次发声只需建节点、连一根线，
+  // 图变更次数比原来少一次，手机音频线程的锁等待随之减少。
 }
 
 // ---- movement ----
@@ -1571,6 +1589,8 @@ function checkEdgeImpact(b) {
 
 // ---- loop ----
 let last = 0, lastDrawTs = 0, rafId = 0, loopPaused = false;
+let _fcAcc = 0;                        // 帧率上限的"余量进位"累加器
+let _ftAcc = 0, _ftN = 0;              // 帧间隔统计（自适应画质用）
 // 页面不可见且未播放时，主循环会被停掉；重新可见或点播放时用这里恢复
 function resumeLoop() {
   if (!rafId) {
@@ -1581,11 +1601,34 @@ function resumeLoop() {
 function frame(ts) {
   rafId = requestAnimationFrame(frame);
   if (!last) { last = ts; lastDrawTs = ts; return; }
-  // 静止态（未播放）降载：30fps 已足够表现极慢的水面呼吸，主循环开销直接减半；
-  // 播放中保持满帧，让触发闪动、涟漪、音点亮度这些与节拍绑定的动效足够顺滑。
-  if (!playing && ts - lastDrawTs < 32) return;
+  if (playing) {
+    // 播放中：帧率上限 ~60fps。90/120Hz 屏上"每帧都画"等于把画布开销翻倍，
+    // 而本作画面全是慢动作，60 与 120 肉眼无差；省下来的主线程时间正是音频线程需要的余量。
+    // 用"余量进位"而不是简单阈值，任意刷新率下都能稳定取到 60（不会因取整掉到 45）。
+    _fcAcc += ts - lastDrawTs;
+    if (_fcAcc < 15) return;                           // 未满 15ms → 本帧不画（last 不更新，dt 自然累计）
+    _fcAcc = _fcAcc > 90 ? 0 : _fcAcc - 15;            // 扣掉一帧配额；长挂起后复位，避免补偿式爆发
+  } else {
+    // 静止态（未播放）降载：30fps 已足够表现极慢的水面呼吸，主循环开销直接减半。
+    _fcAcc = 0;
+    if (ts - lastDrawTs < 32) return;
+  }
   lastDrawTs = ts;
   const dt = Math.min(0.05, (ts - last) / 1000); last = ts;
+
+  // 自适应画质：播放中统计帧间隔，长时间低于 ~38fps 说明主线程被画布栅格化吃满
+  //（手机音频线程也会跟着被拖出"啪啪/咔咔"的爆裂声），就把渲染分辨率退一档。只降不升。
+  if (playing && DPR_CAP > DPR_STEPS[DPR_STEPS.length - 1]) {
+    _ftAcc += dt; _ftN++;
+    if (_ftN >= 120) {
+      const avg = _ftAcc / _ftN;
+      _ftAcc = 0; _ftN = 0;
+      if (avg > 0.026) {
+        const next = DPR_STEPS.find(s => s < DPR_CAP - 0.01);
+        if (next) { DPR_CAP = next; resize(); }
+      }
+    }
+  }
 
   // 音乐时钟：只推进格点计数（定时变奏 / 圆周呼吸用它计时；发声不再挂在这里）
   pumpClock();
@@ -2167,8 +2210,9 @@ document.querySelectorAll('.chiprow').forEach(row => {
 const tempoEl = document.getElementById('tempo'), tempoVal = document.getElementById('tempoVal');
 tempoEl.addEventListener('input', () => {
   state.bpm = +tempoEl.value; tempoVal.textContent = state.bpm + ' BPM';
-  // 延迟时间与 BPM 同步（8 分音符）
-  if (AC) delayNode.delayTime.value = 60 / state.bpm * 0.5;
+  // 延迟时间与 BPM 同步（8 分音符）。这里必须用 setTargetAtTime 平滑过渡：
+  // 直接赋值会让延时线的读指针瞬间跳变 → 拖速度条时会听到"咔"的爆音。
+  if (AC) delayNode.delayTime.setTargetAtTime(60 / state.bpm * 0.5, AC.currentTime, 0.05);
   scheduleSave();
 });
 const playBtn = document.getElementById('playBtn');
@@ -2341,6 +2385,11 @@ function doRestoreVariation() {
 window.addEventListener('pagehide', saveSessionNow);
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveSessionNow(); });
 window.addEventListener('beforeunload', saveSessionNow);
+// 手机切后台再回来时，系统常把音频上下文挂起（suspended）→ 回来就"没声了"。
+// 这里在重新可见时补一次 resume，避免用户以为坏了。
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && AC && AC.state === 'suspended') AC.resume();
+});
 
 // ---- boot ----
 // 画布尺寸同步。注意：canvas 的 CSS 尺寸永远是舞台的 100%（position:absolute;inset:0），
@@ -2354,7 +2403,7 @@ function resize() {
   _lastW = w; _lastH = h;
   W = w; H = h;
   // DPR 可能随系统缩放/浏览器缩放变化，跟随刷新；变化时清掉按旧 DPR 预渲染的点精灵
-  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  const dpr = Math.min(devicePixelRatio || 1, DPR_CAP);
   if (dpr !== DPR) { DPR = dpr; clearSpriteCache(); }
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   if (!changed) return;                               // 尺寸没变 → 无需重算网格/音级
