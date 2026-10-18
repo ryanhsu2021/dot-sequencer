@@ -3,13 +3,13 @@
 一个「小球音序器」：小球在音高网格上运动，走过格点即发声。9 个声部按 **音区（低/中/高）× 节奏（1/2 · 1/4 · 1/8 · 1/16）** 铺开，内置 20 种音色，也能把音符输出给 DAW 里的任何音源。
 
 - 格式：**VST3 + Standalone（Windows x64）**
-- 当前版本：**0.2.3**
+- 当前版本：**0.2.4**
 - 下载：**[Releases](../../releases/latest)**
-- 说明书：**Dot-Sequencer-Manual-0.2.3.pdf**（12 页，也在 Releases 里）
+- 说明书：**Dot-Sequencer-Manual-0.2.4.pdf**（12 页，也在 Releases 里）
 
 ## 下载与安装
 
-**VST3** —— 下载 `Dot-Sequencer-0.2.3-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
+**VST3** —— 下载 `Dot-Sequencer-0.2.4-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
 
 ```
 C:\Program Files\Common Files\VST3\
@@ -17,9 +17,9 @@ C:\Program Files\Common Files\VST3\
 
 然后在 DAW 里重新扫描插件（插件名 `Dot Sequencer`，分类 Instrument）。若之前加载过旧版本，请**完全退出 DAW 再打开** —— Windows 会锁定已加载的 VST3。
 
-**Standalone** —— 直接运行 `Dot-Sequencer-0.2.3-Windows-Standalone.exe`，不需要 DAW。
+**Standalone** —— 直接运行 `Dot-Sequencer-0.2.4-Windows-Standalone.exe`，不需要 DAW。
 
-**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.3.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
+**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.4.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
 
 无需安装、无需运行库；两个安装包都是自包含的，说明书是单独的 PDF。
 
@@ -35,18 +35,17 @@ C:\Program Files\Common Files\VST3\
 | 效果 | BPM 同步延时（附点八分）+ 混响 |
 | 同步 | 跟随宿主 BPM 与播放/停止 |
 
-## 0.2.3 更新要点
+## 0.2.4 更新要点
 
-本版是**和弦进行**更新，界面布局与声音参数不变，旧工程可直接继续用。
+本版修一个升级后容易困惑的问题：**旧工程的 MIDI 通道会自动对齐到声部序号**。
 
-- **和弦进行 12 → 18 组**，下拉按四类分组：`Ambient · Sevenths` / `Ambient · Minor` / `Modal · Cinematic` / `Essentials · Triads`
-- **新增 6 组氛围常用**：1-3-6-4 下行、2-5-1-6、小调 1-4-6-5、安达卢西亚终止式、小调 1-6-4-5、4-5-3-6
-- **默认进行**是列表第一项 `Imaj7-vi7-IVmaj7-V7`
-- **小调进行的末小节升导音**：Aeolian 下是真正的属和弦（G7 / G），不再是 Gm7，安达卢西亚终止式才有收束感
-- **延时上限 200 → 300 BPM**：超过 200 时回声不再与节拍错位
-- **关闭预览时一并清空混响**：重新打开不会漏出关闭前的混响尾巴
+- 0.2.2 及更早的版本，9 个声部默认都走 CH1。那些工程的存档里明确写着 `ch=1`，
+  升级后打开仍然是 9 个 CH1 —— 而新建工程已经是 CH1–CH9，两边对不上。
+- 0.2.4 在加载旧工程时做一次性迁移：9 个通道**完全相同**时，按声部序号重排成 CH1–CH9；
+  只要你手动改过任何一个通道，就原样保留不动。迁移后存档记为 v3，以后再打开不会重排。
+- 新建工程 / 全新安装本来就是 CH1–CH9，行为不变。
 
-新增的进行只追加在列表末尾，原有编号含义没有变化 —— 旧工程打开还是原来那条进行。
+其余功能与 0.2.3 一致（18 组和弦进行、小调属和弦、效果链修正都在）。
 
 ## 关于这个仓库
 
