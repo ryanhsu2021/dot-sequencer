@@ -3,13 +3,13 @@
 一个「小球音序器」：小球在音高网格上运动，走过格点即发声。9 个声部按 **音区（低/中/高）× 节奏（1/2 · 1/4 · 1/8 · 1/16）** 铺开，内置 20 种音色，也能把音符输出给 DAW 里的任何音源。
 
 - 格式：**VST3 + Standalone（Windows x64）**
-- 当前版本：**0.2.5**
+- 当前版本：**0.2.6**
 - 下载：**[Releases](../../releases/latest)**
-- 说明书：**Dot-Sequencer-Manual-0.2.5.pdf**（12 页，也在 Releases 里）
+- 说明书：**Dot-Sequencer-Manual-0.2.6.pdf**（12 页，也在 Releases 里）
 
 ## 下载与安装
 
-**VST3** —— 下载 `Dot-Sequencer-0.2.5-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
+**VST3** —— 下载 `Dot-Sequencer-0.2.6-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
 
 ```
 C:\Program Files\Common Files\VST3\
@@ -17,9 +17,9 @@ C:\Program Files\Common Files\VST3\
 
 然后在 DAW 里重新扫描插件（插件名 `Dot Sequencer`，分类 Instrument）。若之前加载过旧版本，请**完全退出 DAW 再打开** —— Windows 会锁定已加载的 VST3。
 
-**Standalone** —— 直接运行 `Dot-Sequencer-0.2.5-Windows-Standalone.exe`，不需要 DAW。
+**Standalone** —— 直接运行 `Dot-Sequencer-0.2.6-Windows-Standalone.exe`，不需要 DAW。
 
-**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.5.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
+**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.6.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
 
 无需安装、无需运行库；两个安装包都是自包含的，说明书是单独的 PDF。
 
@@ -35,14 +35,15 @@ C:\Program Files\Common Files\VST3\
 | 效果 | BPM 同步延时（附点八分）+ 混响 |
 | 同步 | 跟随宿主 BPM 与播放/停止 |
 
-## 0.2.5 更新要点
+## 0.2.6 更新要点
 
-修两个「关闭再打开就丢」的问题。
+修「关掉插件窗口后 MIDI 不再输出」。
 
-- **MIDI OUT 端口现在会被记住**：之前端口只存在内存里，关掉插件或 Standalone 再打开一律回到 `MIDI Out: Off`，每次都得重选。现在写进工程存档（存的是设备标识），会自动把同一个端口开回来；设备不在了就安静地停在 Off。
-- **DENSITY 的画布排布真正跟着恢复**：之前下拉能记住 Dense，画布却仍按 Medium 的格子数铺开 —— 编辑器第一次布局发生在密度同步之前，用默认档径把存档里的行列冲掉了。修好后三档分别是 22×8 / 25×10 / 32×12 格。
+- 硬件 MIDI 端口的出队原来只由**插件界面的定时器**驱动：在 DAW 里把窗口一关定时器就没了，音符只入队不发送，外部音源彻底没声（内置音源和发给 DAW 音源的 MIDI 都还在，所以很难定位）。
+- 现在改成**音频回调每块自己出队**，关窗、最小化、切页都照常输出；出队用 try_lock，不阻塞音频线程。
+- 提醒：勾着 **PREVIEW** 时只走内置音源、不输出任何 MIDI；要用 MIDI 得先取消勾选。
 
-其余功能与 0.2.4 一致。
+其余功能与 0.2.5 一致。
 
 ## 关于这个仓库
 
