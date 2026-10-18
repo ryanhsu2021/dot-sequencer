@@ -3,13 +3,13 @@
 一个「小球音序器」：小球在音高网格上运动，走过格点即发声。9 个声部按 **音区（低/中/高）× 节奏（1/2 · 1/4 · 1/8 · 1/16）** 铺开，内置 20 种音色，也能把音符输出给 DAW 里的任何音源。
 
 - 格式：**VST3 + Standalone（Windows x64）**
-- 当前版本：**0.2.6**
+- 当前版本：**0.2.7**
 - 下载：**[Releases](../../releases/latest)**
-- 说明书：**Dot-Sequencer-Manual-0.2.6.pdf**（12 页，也在 Releases 里）
+- 说明书：**Dot-Sequencer-Manual-0.2.7.pdf**（12 页，也在 Releases 里）
 
 ## 下载与安装
 
-**VST3** —— 下载 `Dot-Sequencer-0.2.6-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
+**VST3** —— 下载 `Dot-Sequencer-0.2.7-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
 
 ```
 C:\Program Files\Common Files\VST3\
@@ -17,9 +17,9 @@ C:\Program Files\Common Files\VST3\
 
 然后在 DAW 里重新扫描插件（插件名 `Dot Sequencer`，分类 Instrument）。若之前加载过旧版本，请**完全退出 DAW 再打开** —— Windows 会锁定已加载的 VST3。
 
-**Standalone** —— 直接运行 `Dot-Sequencer-0.2.6-Windows-Standalone.exe`，不需要 DAW。
+**Standalone** —— 直接运行 `Dot-Sequencer-0.2.7-Windows-Standalone.exe`，不需要 DAW。
 
-**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.6.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
+**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.7.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
 
 无需安装、无需运行库；两个安装包都是自包含的，说明书是单独的 PDF。
 
@@ -27,7 +27,7 @@ C:\Program Files\Common Files\VST3\
 
 | | |
 |---|---|
-| 声部 | 9 个，每个独立音区 / 节奏 / 音色 / 触发概率 / 音量 / 独奏 / 静音 / 跟随和弦 / MIDI 通道 |
+| 声部 | 9 个，每个独立音区 / 节奏 / 音色 / 触发概率 / 音量 / 独奏 / 静音 / 跟随和弦 / MIDI 通道（默认 CH1–CH9） |
 | 音色 | 20 种，分低音区 · 中音区 · 高音区 · 氛围合奏 · 弦乐组 |
 | 运动 | 布朗 / 直线 / 圆周呼吸 / 黄金三角，四种轨迹 |
 | 和声 | 18 组和弦进行（4 类）、12 调、调内音阶网格、和弦跟随（每声部可开关） |
@@ -35,15 +35,13 @@ C:\Program Files\Common Files\VST3\
 | 效果 | BPM 同步延时（附点八分）+ 混响 |
 | 同步 | 跟随宿主 BPM 与播放/停止 |
 
-## 0.2.6 更新要点
+## 0.2.7 更新要点
 
-修「关掉插件窗口后 MIDI 不再输出」。
+- 右上角新增 **ABOUT** 按钮，点开显示版本、开发者（来叔 / ryanhsu）、邮箱与 B 站信息，点击任意处关闭。
+- MIDI 通道默认按声部序号 **CH1–CH9**（旧存档会一次性自动迁移，手动改过的不受影响）。
+- MIDI OUT 端口选择与 DENSITY 密度排布已随存档保存。
 
-- 硬件 MIDI 端口的出队原来只由**插件界面的定时器**驱动：在 DAW 里把窗口一关定时器就没了，音符只入队不发送，外部音源彻底没声（内置音源和发给 DAW 音源的 MIDI 都还在，所以很难定位）。
-- 现在改成**音频回调每块自己出队**，关窗、最小化、切页都照常输出；出队用 try_lock，不阻塞音频线程。
-- 提醒：勾着 **PREVIEW** 时只走内置音源、不输出任何 MIDI；要用 MIDI 得先取消勾选。
-
-其余功能与 0.2.5 一致。
+其余功能与 0.2.6 一致。
 
 ## 关于这个仓库
 
