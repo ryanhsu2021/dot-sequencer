@@ -3,13 +3,13 @@
 一个「小球音序器」：小球在音高网格上运动，走过格点即发声。9 个声部按 **音区（低/中/高）× 节奏（1/2 · 1/4 · 1/8 · 1/16）** 铺开，内置 20 种音色，也能把音符输出给 DAW 里的任何音源。
 
 - 格式：**VST3 + Standalone（Windows x64）**
-- 当前版本：**0.2.4**
+- 当前版本：**0.2.5**
 - 下载：**[Releases](../../releases/latest)**
-- 说明书：**Dot-Sequencer-Manual-0.2.4.pdf**（12 页，也在 Releases 里）
+- 说明书：**Dot-Sequencer-Manual-0.2.5.pdf**（12 页，也在 Releases 里）
 
 ## 下载与安装
 
-**VST3** —— 下载 `Dot-Sequencer-0.2.4-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
+**VST3** —— 下载 `Dot-Sequencer-0.2.5-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
 
 ```
 C:\Program Files\Common Files\VST3\
@@ -17,9 +17,9 @@ C:\Program Files\Common Files\VST3\
 
 然后在 DAW 里重新扫描插件（插件名 `Dot Sequencer`，分类 Instrument）。若之前加载过旧版本，请**完全退出 DAW 再打开** —— Windows 会锁定已加载的 VST3。
 
-**Standalone** —— 直接运行 `Dot-Sequencer-0.2.4-Windows-Standalone.exe`，不需要 DAW。
+**Standalone** —— 直接运行 `Dot-Sequencer-0.2.5-Windows-Standalone.exe`，不需要 DAW。
 
-**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.4.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
+**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.5.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
 
 无需安装、无需运行库；两个安装包都是自包含的，说明书是单独的 PDF。
 
@@ -35,17 +35,14 @@ C:\Program Files\Common Files\VST3\
 | 效果 | BPM 同步延时（附点八分）+ 混响 |
 | 同步 | 跟随宿主 BPM 与播放/停止 |
 
-## 0.2.4 更新要点
+## 0.2.5 更新要点
 
-本版修一个升级后容易困惑的问题：**旧工程的 MIDI 通道会自动对齐到声部序号**。
+修两个「关闭再打开就丢」的问题。
 
-- 0.2.2 及更早的版本，9 个声部默认都走 CH1。那些工程的存档里明确写着 `ch=1`，
-  升级后打开仍然是 9 个 CH1 —— 而新建工程已经是 CH1–CH9，两边对不上。
-- 0.2.4 在加载旧工程时做一次性迁移：9 个通道**完全相同**时，按声部序号重排成 CH1–CH9；
-  只要你手动改过任何一个通道，就原样保留不动。迁移后存档记为 v3，以后再打开不会重排。
-- 新建工程 / 全新安装本来就是 CH1–CH9，行为不变。
+- **MIDI OUT 端口现在会被记住**：之前端口只存在内存里，关掉插件或 Standalone 再打开一律回到 `MIDI Out: Off`，每次都得重选。现在写进工程存档（存的是设备标识），会自动把同一个端口开回来；设备不在了就安静地停在 Off。
+- **DENSITY 的画布排布真正跟着恢复**：之前下拉能记住 Dense，画布却仍按 Medium 的格子数铺开 —— 编辑器第一次布局发生在密度同步之前，用默认档径把存档里的行列冲掉了。修好后三档分别是 22×8 / 25×10 / 32×12 格。
 
-其余功能与 0.2.3 一致（18 组和弦进行、小调属和弦、效果链修正都在）。
+其余功能与 0.2.4 一致。
 
 ## 关于这个仓库
 
