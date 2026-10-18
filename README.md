@@ -5,6 +5,7 @@
 - 格式：**VST3 + Standalone（Windows x64）**
 - 当前版本：**0.2.3**
 - 下载：**[Releases](../../releases/latest)**
+- 说明书：**Dot-Sequencer-Manual-0.2.3.pdf**（12 页，也在 Releases 里）
 
 ## 下载与安装
 
@@ -18,7 +19,9 @@ C:\Program Files\Common Files\VST3\
 
 **Standalone** —— 直接运行 `Dot-Sequencer-0.2.3-Windows-Standalone.exe`，不需要 DAW。
 
-无需安装、无需运行库，两个包都是自包含的。
+**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.3.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
+
+无需安装、无需运行库；两个安装包都是自包含的，说明书是单独的 PDF。
 
 ## 主要特性
 
