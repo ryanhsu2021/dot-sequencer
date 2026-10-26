@@ -3,13 +3,13 @@
 一个「小球音序器」：小球在音高网格上运动，走过格点即发声。9 个声部按 **音区（低/中/高）× 节奏（1/2 · 1/4 · 1/8 · 1/16）** 铺开，内置 20 种音色，也能把音符输出给 DAW 里的任何音源。
 
 - 格式：**VST3 + Standalone（Windows x64）**
-- 当前版本：**0.2.7**
+- 当前版本：**0.2.8**
 - 下载：**[Releases](../../releases/latest)**
-- 说明书：**Dot-Sequencer-Manual-0.2.7.pdf**（12 页，也在 Releases 里）
+- 说明书：**Dot-Sequencer-Manual-0.2.8.pdf**（13 页，也在 Releases 里）
 
 ## 下载与安装
 
-**VST3** —— 下载 `Dot-Sequencer-0.2.7-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
+**VST3** —— 下载 `Dot-Sequencer-0.2.8-Windows-VST3.zip`，解压后把 `Dot Sequencer.vst3` 整个文件夹放到
 
 ```
 C:\Program Files\Common Files\VST3\
@@ -17,9 +17,9 @@ C:\Program Files\Common Files\VST3\
 
 然后在 DAW 里重新扫描插件（插件名 `Dot Sequencer`，分类 Instrument）。若之前加载过旧版本，请**完全退出 DAW 再打开** —— Windows 会锁定已加载的 VST3。
 
-**Standalone** —— 直接运行 `Dot-Sequencer-0.2.7-Windows-Standalone.exe`，不需要 DAW。
+**Standalone** —— 直接运行 `Dot-Sequencer-0.2.8-Windows-Standalone.exe`，不需要 DAW。
 
-**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.7.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
+**说明书** —— 下载 `Dot-Sequencer-Manual-0.2.8.pdf`。第一次用先看第 2 章：Standalone 的音频缓冲要手动设一次（512 或 1024），否则可能听到咔哒声。
 
 无需安装、无需运行库；两个安装包都是自包含的，说明书是单独的 PDF。
 
@@ -34,14 +34,18 @@ C:\Program Files\Common Files\VST3\
 | 输出 | 内置音源（预览）+ 宿主 MIDI 输出 + 硬件 MIDI 端口 |
 | 效果 | BPM 同步延时（附点八分）+ 混响 |
 | 同步 | 跟随宿主 BPM 与播放/停止 |
+| 外观 | 深色 / 浅色两套主题（标题栏按钮切换，独立版可按 `T`），选择跟人走、不写进工程 |
 
-## 0.2.7 更新要点
+## 0.2.8 更新要点
 
-- 右上角新增 **ABOUT** 按钮，点开显示版本、开发者（来叔 / ryanhsu）、邮箱与 B 站信息，点击任意处关闭。
-- MIDI 通道默认按声部序号 **CH1–CH9**（旧存档会一次性自动迁移，手动改过的不受影响）。
-- MIDI OUT 端口选择与 DENSITY 密度排布已随存档保存。
+- 新增**浅色主题**：标题栏右上角（MIDI OUT 右边）切换，独立版也可以直接按 `T`。浅色不是把深色反转，而是另配了一套纸面语言 —— 音点变成淡墨点、音名反而加深（点轻字重），涟漪与晕染按正片叠底重算。
+- 声部小球的扩散改用**小球自己的颜色**在白纸上洇开（原来的灰色暗环已去掉）。
+- 主题选择存在用户配置文件里，**不写进工程存档** —— 换台机器打开还是你习惯的那一套。
+- 修：声部卡首排四个下拉不再裁字（`Dark Drone` / `100%` / `1/16` 全部完整显示），宽度改为按实际字宽测量分配。
+- 修：窗口锁定 1080 × 860，不可拖拽缩放，宿主也不会把界面拉伸变形。
+- 修：VST3 里不再抢键盘焦点，宿主快捷键（空格停止等）不再被插件吞掉。
 
-其余功能与 0.2.6 一致。
+其余功能与 0.2.7 一致。
 
 ## 关于这个仓库
 
